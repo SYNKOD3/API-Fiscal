@@ -25,8 +25,20 @@ public class CompanyService {
             throw new ConflictException("Empresa ja cadastrada para este CNPJ");
         });
 
+        if (hasText(request.bivaroTenantId()) && hasText(request.bivaroMerchantId())) {
+            companyRepository.findByBivaroTenantIdAndBivaroMerchantId(
+                request.bivaroTenantId(),
+                request.bivaroMerchantId()
+            ).ifPresent(existing -> {
+                throw new ConflictException("Lojista Bivaro ja vinculado a outra empresa emissora");
+            });
+        }
+
         Company company = Company.create(
             request.legalName(),
+            request.bivaroTenantId(),
+            request.bivaroMerchantId(),
+            request.callbackUrl(),
             request.taxId(),
             request.stateRegistration(),
             request.stateCode(),
@@ -56,13 +68,25 @@ public class CompanyService {
     }
 
     @Transactional(readOnly = true)
-    public List<CompanyResponse> list() {
-        return companyRepository.findAll().stream().map(CompanyResponse::from).toList();
+    public List<CompanyResponse> list(String bivaroTenantId) {
+        return hasText(bivaroTenantId)
+            ? companyRepository.findByBivaroTenantIdOrderByCreatedAtDesc(bivaroTenantId).stream().map(CompanyResponse::from).toList()
+            : companyRepository.findAll().stream().map(CompanyResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
     public Company getById(UUID id) {
         return companyRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Empresa nao encontrada"));
+    }
+
+    @Transactional(readOnly = true)
+    public Company getByBivaroMerchant(String bivaroTenantId, String bivaroMerchantId) {
+        return companyRepository.findByBivaroTenantIdAndBivaroMerchantId(bivaroTenantId, bivaroMerchantId)
+            .orElseThrow(() -> new NotFoundException("Empresa emissora nao encontrada para o lojista Bivaro"));
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

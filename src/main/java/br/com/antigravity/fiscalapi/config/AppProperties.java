@@ -1,5 +1,7 @@
 package br.com.antigravity.fiscalapi.config;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app")
@@ -46,6 +48,7 @@ public class AppProperties {
     public static class Fiscal {
         private Provider provider = Provider.STUB;
         private boolean stubOnline = true;
+        private Set<String> unavailableStates = new HashSet<>();
 
         public Provider getProvider() {
             return provider;
@@ -61,6 +64,14 @@ public class AppProperties {
 
         public void setStubOnline(boolean stubOnline) {
             this.stubOnline = stubOnline;
+        }
+
+        public Set<String> getUnavailableStates() {
+            return unavailableStates;
+        }
+
+        public void setUnavailableStates(Set<String> unavailableStates) {
+            this.unavailableStates = unavailableStates == null ? new HashSet<>() : unavailableStates;
         }
     }
 

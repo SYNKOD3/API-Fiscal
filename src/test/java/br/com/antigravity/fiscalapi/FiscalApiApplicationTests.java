@@ -12,6 +12,7 @@ import br.com.antigravity.fiscalapi.document.DocumentModel;
 import br.com.antigravity.fiscalapi.document.FiscalItemRequest;
 import br.com.antigravity.fiscalapi.document.IssueDocumentRequest;
 import br.com.antigravity.fiscalapi.document.FiscalDocumentService;
+import br.com.antigravity.fiscalapi.sefaz.SefazRouter;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -30,16 +31,23 @@ class FiscalApiApplicationTests {
     @Autowired
     private FiscalAuditService fiscalAuditService;
 
+    @Autowired
+    private SefazRouter sefazRouter;
+
     @Test
     void contextLoads() {
         assertThat(companyService).isNotNull();
         assertThat(fiscalDocumentService).isNotNull();
         assertThat(fiscalAuditService).isNotNull();
+        assertThat(sefazRouter).isNotNull();
     }
 
     @Test
     void allocatesIndependentNumberSequencesByDocumentModel() {
         var company = companyService.create(new CreateCompanyRequest(
+            "bivaro-test",
+            "merchant-ba",
+            "https://bivaro.example/webhooks/fiscal",
             "Empresa Fiscal Teste LTDA",
             "12345678000199",
             "123456789",
@@ -67,6 +75,8 @@ class FiscalApiApplicationTests {
 
         var firstNfce = fiscalDocumentService.issue(new IssueDocumentRequest(
             company.id(),
+            null,
+            null,
             DocumentModel.NFCE,
             "PEDIDO-1",
             "Cliente Teste",
@@ -76,6 +86,8 @@ class FiscalApiApplicationTests {
 
         var secondNfce = fiscalDocumentService.issue(new IssueDocumentRequest(
             company.id(),
+            null,
+            null,
             DocumentModel.NFCE,
             "PEDIDO-2",
             "Cliente Teste",
@@ -85,6 +97,8 @@ class FiscalApiApplicationTests {
 
         var firstNfe = fiscalDocumentService.issue(new IssueDocumentRequest(
             company.id(),
+            null,
+            null,
             DocumentModel.NFE,
             "PEDIDO-3",
             "Cliente Empresa",
@@ -109,6 +123,24 @@ class FiscalApiApplicationTests {
             .contains("COMPANY_CREATED", "DOCUMENT_RECEIVED", "ACCESS_KEY_CREATED", "DOCUMENT_AUTHORIZED");
         assertThat(fiscalAuditService.listByDocument(firstNfce.id()).stream().map(FiscalAuditEventResponse::eventType))
             .contains("DOCUMENT_RECEIVED", "ACCESS_KEY_CREATED", "DOCUMENT_AUTHORIZED");
+
+        var bivaroIssued = fiscalDocumentService.issue(new IssueDocumentRequest(
+            null,
+            "bivaro-test",
+            "merchant-ba",
+            DocumentModel.NFCE,
+            "PEDIDO-BIVARO-1",
+            "Cliente Bivaro",
+            BigDecimal.valueOf(50),
+            List.of(item("D", "Produto D", BigDecimal.valueOf(50)))
+        ));
+        assertThat(bivaroIssued.companyId()).isEqualTo(company.id());
+        assertThat(bivaroIssued.invoiceNumber()).isEqualTo(202);
+
+        var route = sefazRouter.route(companyService.getByBivaroMerchant("bivaro-test", "merchant-ba"), DocumentModel.NFCE);
+        assertThat(route.stateCode()).isEqualTo("BA");
+        assertThat(route.authorizerStrategy()).isEqualTo("JAVA_NFE_BY_EMITTER_UF");
+        assertThat(route.available()).isTrue();
     }
 
     private FiscalItemRequest item(String sku, String description, BigDecimal totalAmount) {

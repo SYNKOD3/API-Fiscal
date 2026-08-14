@@ -9,6 +9,7 @@ import br.com.antigravity.fiscalapi.fiscal.FiscalSubmission;
 import br.com.antigravity.fiscalapi.fiscal.FiscalXmlBuilder;
 import br.com.antigravity.fiscalapi.fiscal.FiscalXmlDraft;
 import br.com.antigravity.fiscalapi.fiscal.FiscalXmlPreviewRenderer;
+import br.com.antigravity.fiscalapi.shared.BadRequestException;
 import br.com.antigravity.fiscalapi.shared.ConflictException;
 import br.com.antigravity.fiscalapi.shared.NotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -53,7 +54,7 @@ public class FiscalDocumentService {
     public DocumentResponse issue(IssueDocumentRequest request) {
         validateTotals(request);
 
-        FiscalNumberAllocation allocation = fiscalNumberAllocator.allocate(request.companyId(), request.model());
+        FiscalNumberAllocation allocation = allocateFiscalNumber(request);
         Company company = allocation.company();
 
         documentRepository.findByCompany_IdAndExternalReference(company.getId(), request.externalReference())
@@ -220,7 +221,7 @@ public class FiscalDocumentService {
             draft.accessKey()
         );
 
-        if (!fiscalGateway.isAvailable(document.getCompany().getTaxId())) {
+        if (!fiscalGateway.isAvailable(submission)) {
             document.moveToContingency("SEFAZ indisponivel, documento em contingencia", buildContingencyReceipt(document, draft));
             auditService.record(document.getCompany().getId(), document.getId(), "CONTINGENCY_CREATED", "Documento colocado em contingencia", document.getLastError());
             documentRepository.saveAndFlush(document);
@@ -297,6 +298,26 @@ public class FiscalDocumentService {
         if (itemsTotal.compareTo(request.totalAmount()) != 0) {
             throw new ConflictException("Total dos itens nao confere com o total do documento");
         }
+    }
+
+    private FiscalNumberAllocation allocateFiscalNumber(IssueDocumentRequest request) {
+        if (request.companyId() != null) {
+            return fiscalNumberAllocator.allocate(request.companyId(), request.model());
+        }
+
+        if (hasText(request.bivaroTenantId()) && hasText(request.bivaroMerchantId())) {
+            return fiscalNumberAllocator.allocateByBivaroMerchant(
+                request.bivaroTenantId(),
+                request.bivaroMerchantId(),
+                request.model()
+            );
+        }
+
+        throw new BadRequestException("Informe companyId ou bivaroTenantId + bivaroMerchantId para emitir.");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private String nullToDash(String value) {

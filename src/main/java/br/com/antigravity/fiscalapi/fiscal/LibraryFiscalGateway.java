@@ -4,6 +4,7 @@ import br.com.antigravity.fiscalapi.config.AppProperties;
 import br.com.antigravity.fiscalapi.company.Company;
 import br.com.antigravity.fiscalapi.company.CompanyRepository;
 import br.com.antigravity.fiscalapi.document.DocumentModel;
+import br.com.antigravity.fiscalapi.sefaz.SefazRouter;
 import br.com.antigravity.fiscalapi.shared.NotFoundException;
 import br.com.swconsultoria.nfe.Nfe;
 import br.com.swconsultoria.nfe.dom.ConfiguracoesNfe;
@@ -23,24 +24,28 @@ public class LibraryFiscalGateway implements FiscalGateway {
     private final FiscalXmlPreviewRenderer fiscalXmlPreviewRenderer;
     private final JavaNfeMapper javaNfeMapper;
     private final JavaNfeConfigurationFactory javaNfeConfigurationFactory;
+    private final SefazRouter sefazRouter;
 
     public LibraryFiscalGateway(AppProperties properties,
                                 CompanyRepository companyRepository,
                                 FiscalXmlBuilder fiscalXmlBuilder,
                                 FiscalXmlPreviewRenderer fiscalXmlPreviewRenderer,
                                 JavaNfeMapper javaNfeMapper,
-                                JavaNfeConfigurationFactory javaNfeConfigurationFactory) {
+                                JavaNfeConfigurationFactory javaNfeConfigurationFactory,
+                                SefazRouter sefazRouter) {
         this.properties = properties;
         this.companyRepository = companyRepository;
         this.fiscalXmlBuilder = fiscalXmlBuilder;
         this.fiscalXmlPreviewRenderer = fiscalXmlPreviewRenderer;
         this.javaNfeMapper = javaNfeMapper;
         this.javaNfeConfigurationFactory = javaNfeConfigurationFactory;
+        this.sefazRouter = sefazRouter;
     }
 
     @Override
-    public boolean isAvailable(String companyTaxId) {
-        return properties.getFiscal().getProvider() == AppProperties.Provider.LIBRARY;
+    public boolean isAvailable(FiscalSubmission submission) {
+        return properties.getFiscal().getProvider() == AppProperties.Provider.LIBRARY
+            && sefazRouter.isAvailable(submission.companyStateCode());
     }
 
     @Override
@@ -49,6 +54,10 @@ public class LibraryFiscalGateway implements FiscalGateway {
             .orElseThrow(() -> new NotFoundException("Empresa emissora nao encontrada"));
 
         validateFiscalConfiguration(company);
+        if (!isAvailable(submission)) {
+            throw new FiscalGatewayException("SEFAZ da UF " + submission.companyStateCode() + " marcada como indisponivel", true);
+        }
+
         FiscalXmlDraft draft = fiscalXmlBuilder.build(submission);
         TEnviNFe enviNFe = javaNfeMapper.toEnviNFe(draft);
         String xmlPreview = fiscalXmlPreviewRenderer.render(draft);

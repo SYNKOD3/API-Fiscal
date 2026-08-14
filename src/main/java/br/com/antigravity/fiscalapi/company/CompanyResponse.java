@@ -5,6 +5,9 @@ import java.util.UUID;
 
 public record CompanyResponse(
     UUID id,
+    String bivaroTenantId,
+    String bivaroMerchantId,
+    String callbackUrl,
     String legalName,
     String taxId,
     String stateRegistration,
@@ -32,6 +35,9 @@ public record CompanyResponse(
     public static CompanyResponse from(Company company) {
         return new CompanyResponse(
             company.getId(),
+            company.getBivaroTenantId(),
+            company.getBivaroMerchantId(),
+            company.getCallbackUrl(),
             company.getLegalName(),
             company.getTaxId(),
             company.getStateRegistration(),

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -38,8 +39,8 @@ public class CompanyController {
         summary = "Listar empresas emissoras",
         description = "Retorna todas as empresas cadastradas para emissao fiscal multiempresa."
     )
-    public ApiEnvelope<List<CompanyResponse>> list() {
-        return ApiEnvelope.of(companyService.list());
+    public ApiEnvelope<List<CompanyResponse>> list(@RequestParam(required = false) String bivaroTenantId) {
+        return ApiEnvelope.of(companyService.list(bivaroTenantId));
     }
 
     public record ApiEnvelope<T>(T data) {

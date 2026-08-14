@@ -16,13 +16,16 @@ public class StubFiscalGateway implements FiscalGateway {
     }
 
     @Override
-    public boolean isAvailable(String companyTaxId) {
-        return properties.getFiscal().isStubOnline();
+    public boolean isAvailable(FiscalSubmission submission) {
+        return properties.getFiscal().isStubOnline()
+            && properties.getFiscal().getUnavailableStates().stream()
+            .map(state -> state.trim().toUpperCase())
+            .noneMatch(submission.companyStateCode()::equals);
     }
 
     @Override
     public FiscalSubmissionResult submit(FiscalSubmission submission) {
-        if (!isAvailable(submission.companyTaxId())) {
+        if (!isAvailable(submission)) {
             throw new FiscalGatewayException("Stub fiscal configurado como offline", true);
         }
 

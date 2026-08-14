@@ -325,6 +325,9 @@
       <section>
         <h2>Cadastrar Empresa</h2>
         <form id="companyForm" class="grid">
+          <label>Tenant Bivaro <input name="bivaroTenantId" value="bivaro-dev"></label>
+          <label>Lojista Bivaro <input name="bivaroMerchantId" value="merchant-dev"></label>
+          <label class="full">Callback Bivaro <input name="callbackUrl" placeholder="https://bivaro.com.br/webhooks/fiscal"></label>
           <label>Razão social <input name="legalName" value="Empresa Exemplo LTDA" required></label>
           <label>Nome fantasia <input name="tradeName" value="Empresa Exemplo"></label>
           <label>CNPJ <input name="taxId" value="12345678000199" required></label>
@@ -512,6 +515,9 @@
     function simulationCompanyPayload() {
       const suffix = String(Date.now()).slice(-8);
       return {
+        bivaroTenantId: "bivaro-dev",
+        bivaroMerchantId: `merchant-${suffix}`,
+        callbackUrl: null,
         legalName: `Empresa Simulada ${suffix} LTDA`,
         tradeName: `Simulada ${suffix}`,
         taxId: `123456${suffix}`,
@@ -584,6 +590,7 @@
         card.innerHTML = `
           <strong>${company.legalName}</strong>
           <div class="meta">${company.id}</div>
+          <div class="meta">Bivaro ${company.bivaroTenantId || "-"} / ${company.bivaroMerchantId || "-"}</div>
           <div class="meta">CNPJ ${company.taxId} | ${company.stateCode} | ${company.fiscalEnvironment}</div>
           <div class="meta">NF-e ${company.nfeSeriesNumber}/${company.nextNfeNumber} · NFC-e ${company.nfceSeriesNumber}/${company.nextNfceNumber}</div>
         `;

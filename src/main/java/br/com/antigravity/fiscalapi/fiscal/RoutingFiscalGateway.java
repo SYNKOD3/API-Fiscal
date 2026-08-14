@@ -21,8 +21,8 @@ public class RoutingFiscalGateway implements FiscalGateway {
     }
 
     @Override
-    public boolean isAvailable(String companyTaxId) {
-        return currentGateway().isAvailable(companyTaxId);
+    public boolean isAvailable(FiscalSubmission submission) {
+        return currentGateway().isAvailable(submission);
     }
 
     @Override

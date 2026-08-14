@@ -5,6 +5,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 
 public record CreateCompanyRequest(
+    String bivaroTenantId,
+    String bivaroMerchantId,
+    String callbackUrl,
     @NotBlank String legalName,
     @NotBlank @Pattern(regexp = "\\d{14}") String taxId,
     @NotBlank String stateRegistration,

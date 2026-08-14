@@ -12,20 +12,24 @@ Base Spring Boot para emissao de NF-e e NFC-e em ambiente multiempresa, com cont
 - Reprocessamento automatico em background para transmissao posterior.
 - Swagger em `/swagger-ui/index.html` apenas quando habilitado.
 - Perfil `prod` com PostgreSQL, Flyway, console dev fechado e validacao de segredos no boot.
+- Vinculo com lojistas do Bivaro por `bivaroTenantId` e `bivaroMerchantId`.
+- Roteamento SEFAZ por UF da empresa emitente, nao pela UF do comprador.
 
 ## Fluxo operacional
 
 1. Seu sistema chama `POST /api/v1/documents`.
-2. A aplicacao salva o documento com a empresa emissora correta.
-3. Se a SEFAZ estiver online, o gateway autoriza o documento.
-4. Se a SEFAZ cair, o documento entra em `CONTINGENCY_PENDING` com recibo local.
-5. O XML local e o comprovante ficam disponiveis para consulta/download.
-6. O agendador tenta reenviar automaticamente ate conseguir a autorizacao.
+2. A aplicacao localiza a empresa emissora pelo `companyId` ou por `bivaroTenantId + bivaroMerchantId`.
+3. A rota SEFAZ e definida pela UF da empresa emissora.
+4. Se a SEFAZ estiver online, o gateway autoriza o documento.
+5. Se a SEFAZ cair, o documento entra em `CONTINGENCY_PENDING` com recibo local.
+6. O XML local e o comprovante ficam disponiveis para consulta/download.
+7. O agendador tenta reenviar automaticamente ate conseguir a autorizacao.
 
 ## Endpoints principais
 
 - `POST /api/v1/companies`
 - `GET /api/v1/companies`
+- `GET /api/v1/companies?bivaroTenantId={tenant}`
 - `POST /api/v1/documents`
 - `GET /api/v1/documents/{id}`
 - `GET /api/v1/documents?companyId={uuid}`
@@ -33,8 +37,25 @@ Base Spring Boot para emissao de NF-e e NFC-e em ambiente multiempresa, com cont
 - `GET /api/v1/documents/{id}/receipt`
 - `GET /api/v1/documents/{id}/xml`
 - `GET /api/v1/documents/{id}/print`
+- `GET /api/v1/sefaz/states`
+- `GET /api/v1/sefaz/companies/{companyId}/route?model=NFCE`
+- `GET /api/v1/sefaz/bivaro-route?bivaroTenantId={tenant}&bivaroMerchantId={merchant}&model=NFCE`
 - `GET /api/v1/audit/companies/{companyId}`
 - `GET /api/v1/audit/documents/{documentId}`
+
+## Bivaro como SaaS fiscal
+
+O Bivaro e a plataforma intermediadora. A empresa emitente da NF-e/NFC-e e sempre o lojista cadastrado, com seu proprio CNPJ, UF, inscricao estadual, certificado, CSC, serie e numeracao.
+
+Exemplo:
+
+```text
+Bivaro -> API Fiscal -> Lojista BA -> SEFAZ/autorizador da BA
+Bivaro -> API Fiscal -> Lojista SP -> SEFAZ/autorizador de SP
+Bivaro -> API Fiscal -> Lojista MG -> SEFAZ/autorizador de MG
+```
+
+A UF do comprador nao define a SEFAZ de emissao. A rota fiscal vem de `Company.stateCode`, ou seja, da UF do lojista emitente.
 
 ## Exemplo de cadastro de empresa
 
@@ -44,6 +65,9 @@ X-API-Key: sua-chave-forte
 Content-Type: application/json
 
 {
+  "bivaroTenantId": "bivaro-prod",
+  "bivaroMerchantId": "lojista-1001",
+  "callbackUrl": "https://bivaro.com.br/webhooks/fiscal",
   "legalName": "Empresa Exemplo LTDA",
   "taxId": "12345678000199",
   "stateRegistration": "123456789",
@@ -107,6 +131,38 @@ Content-Type: application/json
 
 O `totalAmount` do documento precisa bater com a soma de `items[].totalAmount`.
 
+Tambem e possivel emitir sem expor o UUID interno da empresa, usando os identificadores do Bivaro:
+
+```json
+{
+  "bivaroTenantId": "bivaro-prod",
+  "bivaroMerchantId": "lojista-1001",
+  "model": "NFCE",
+  "externalReference": "PEDIDO-1001",
+  "customerName": "Cliente Teste",
+  "totalAmount": 199.90,
+  "items": [
+    {
+      "sku": "PROD-001",
+      "description": "Produto A",
+      "ncm": "01012100",
+      "cest": null,
+      "gtin": "SEM GTIN",
+      "cfop": "5102",
+      "unit": "UN",
+      "quantity": 1,
+      "unitAmount": 199.90,
+      "totalAmount": 199.90,
+      "origin": "0",
+      "icmsCode": "102",
+      "pisCode": "49",
+      "cofinsCode": "49",
+      "approximateTaxAmount": 0
+    }
+  ]
+}
+```
+
 ## Como plugar a biblioteca fiscal real
 
 Hoje a aplicacao sobe com `app.fiscal.provider=STUB` para validar o fluxo de negocio.
@@ -147,6 +203,24 @@ Essa camada evita que detalhes da biblioteca fiscal vazem para controllers, serv
 - `NFE`: nota fiscal eletronica completa de mercadoria, modelo 55.
 
 O campo `model` em `POST /api/v1/documents` define qual caminho fiscal sera usado.
+
+## Roteamento SEFAZ nacional
+
+A classe `SefazRouter` centraliza a decisao de rota por UF. A API usa a UF da empresa emitente para montar `ConfiguracoesNfe` na Java-NFe.
+
+Endpoints uteis:
+
+- `GET /api/v1/sefaz/states`: lista as UFs habilitadas na API.
+- `GET /api/v1/sefaz/companies/{companyId}/route?model=NFCE`: mostra a rota de uma empresa.
+- `GET /api/v1/sefaz/bivaro-route?bivaroTenantId=...&bivaroMerchantId=...&model=NFCE`: mostra a rota pelo identificador do Bivaro.
+
+Para simular queda localizada de SEFAZ por UF:
+
+```env
+FISCAL_UNAVAILABLE_STATES=BA,SP
+```
+
+Nesse caso, apenas empresas emitentes dessas UFs entram em contingencia; lojistas de outras UFs continuam emitindo.
 
 ## Numeracao fiscal
 

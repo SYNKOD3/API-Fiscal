@@ -10,7 +10,9 @@ import java.util.List;
 import java.util.UUID;
 
 public record IssueDocumentRequest(
-    @NotNull UUID companyId,
+    UUID companyId,
+    String bivaroTenantId,
+    String bivaroMerchantId,
     @NotNull DocumentModel model,
     @NotBlank String externalReference,
     @NotBlank String customerName,
