@@ -1,0 +1,9 @@
+target/
+.git/
+.idea/
+.vscode/
+*.log
+*.tmp
+.env
+.env.*
+!env.production.example

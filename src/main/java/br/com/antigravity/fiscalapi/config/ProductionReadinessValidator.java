@@ -1,0 +1,78 @@
+package br.com.antigravity.fiscalapi.config;
+
+import java.util.Arrays;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ProductionReadinessValidator implements ApplicationRunner {
+
+    private static final String DEV_API_KEY = "change-me";
+    private static final String DEV_SECRETS_KEY = "dev-insecure-change-me";
+
+    private final AppProperties properties;
+    private final Environment environment;
+
+    public ProductionReadinessValidator(AppProperties properties, Environment environment) {
+        this.properties = properties;
+        this.environment = environment;
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        if (!isProductionProfile()) {
+            return;
+        }
+
+        requireStrongApiKey();
+        requireSecretsKey();
+        requireLibraryProvider();
+        requirePrivateDevTools();
+        requirePostgresDatasource();
+    }
+
+    private boolean isProductionProfile() {
+        return Arrays.asList(environment.getActiveProfiles()).contains("prod");
+    }
+
+    private void requireStrongApiKey() {
+        String apiKey = properties.getSecurity().getApiKey();
+        if (apiKey == null || apiKey.isBlank() || DEV_API_KEY.equals(apiKey) || apiKey.length() < 24) {
+            throw new IllegalStateException("Producao exige APP_API_KEY forte com pelo menos 24 caracteres.");
+        }
+    }
+
+    private void requireSecretsKey() {
+        String secret = System.getenv().getOrDefault(
+            "APP_SECRETS_KEY",
+            System.getProperty("app.secrets.key", "")
+        );
+        if (secret.isBlank() || DEV_SECRETS_KEY.equals(secret) || secret.length() < 32) {
+            throw new IllegalStateException("Producao exige APP_SECRETS_KEY forte, fixa e com pelo menos 32 caracteres.");
+        }
+    }
+
+    private void requireLibraryProvider() {
+        if (properties.getFiscal().getProvider() != AppProperties.Provider.LIBRARY) {
+            throw new IllegalStateException("Producao exige app.fiscal.provider=LIBRARY.");
+        }
+    }
+
+    private void requirePrivateDevTools() {
+        if (properties.getDevConsole().isEnabled()) {
+            throw new IllegalStateException("Producao exige app.dev-console.enabled=false.");
+        }
+        if (properties.getOpenApi().isPublicAccess()) {
+            throw new IllegalStateException("Producao exige app.open-api.public-access=false.");
+        }
+    }
+
+    private void requirePostgresDatasource() {
+        String datasourceUrl = environment.getProperty("spring.datasource.url", "");
+        if (!datasourceUrl.startsWith("jdbc:postgresql:")) {
+            throw new IllegalStateException("Producao exige spring.datasource.url PostgreSQL.");
+        }
+    }
+}

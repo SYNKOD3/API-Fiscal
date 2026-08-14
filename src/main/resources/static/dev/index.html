@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fiscal API Dev Console</title>
+  <style>
+    :root {
+      --ink: #1f261f;
+      --muted: #6b756b;
+      --paper: #f8f3e8;
+      --panel: rgba(255, 252, 243, 0.88);
+      --line: #d8cdb8;
+      --leaf: #2f5d50;
+      --leaf-2: #7b9b6f;
+      --amber: #d68b35;
+      --danger: #b34b3f;
+      --shadow: 0 22px 70px rgba(45, 55, 45, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(214, 139, 53, 0.22), transparent 28rem),
+        radial-gradient(circle at 90% 0%, rgba(47, 93, 80, 0.22), transparent 30rem),
+        linear-gradient(135deg, #f6eddc 0%, #eef0df 48%, #e6efe7 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.34;
+      background-image:
+        linear-gradient(rgba(47, 93, 80, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(47, 93, 80, 0.08) 1px, transparent 1px);
+      background-size: 34px 34px;
+    }
+
+    header {
+      position: relative;
+      padding: 34px clamp(18px, 4vw, 56px) 18px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 840px;
+      font-size: clamp(2.2rem, 6vw, 5.6rem);
+      line-height: 0.9;
+      letter-spacing: -0.06em;
+    }
+
+    header p {
+      max-width: 740px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.55;
+    }
+
+    main {
+      position: relative;
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 18px;
+      padding: 16px clamp(18px, 4vw, 56px) 46px;
+    }
+
+    section, aside {
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    aside {
+      position: sticky;
+      top: 18px;
+      align-self: start;
+      padding: 18px;
+    }
+
+    section {
+      padding: 20px;
+      animation: rise 520ms ease both;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.35rem;
+      letter-spacing: -0.03em;
+    }
+
+    h3 {
+      margin: 18px 0 10px;
+      color: var(--leaf);
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #cfc2aa;
+      border-radius: 14px;
+      padding: 12px 13px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.62);
+      font: 15px "Trebuchet MS", Verdana, sans-serif;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 118px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--leaf);
+      box-shadow: 0 0 0 4px rgba(47, 93, 80, 0.13);
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 16px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--leaf), #1f4038);
+      font: 700 14px "Trebuchet MS", Verdana, sans-serif;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease;
+      box-shadow: 0 10px 24px rgba(47, 93, 80, 0.22);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(47, 93, 80, 0.28);
+    }
+
+    button.secondary {
+      color: var(--leaf);
+      background: #edf4e9;
+      box-shadow: none;
+      border: 1px solid #c8d8c3;
+    }
+
+    button.warn {
+      background: linear-gradient(135deg, var(--amber), #b96e26);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .cards {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.55);
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--leaf);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.05rem;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.86rem;
+      word-break: break-all;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      margin-top: 9px;
+      color: #fff;
+      background: var(--leaf);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .status.CONTINGENCY_PENDING,
+    .status.RETRY_SCHEDULED {
+      background: var(--amber);
+    }
+
+    .status.REJECTED {
+      background: var(--danger);
+    }
+
+    pre {
+      overflow: auto;
+      max-height: 420px;
+      margin: 12px 0 0;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: #1f261f;
+      color: #f7efd9;
+      font: 13px/1.45 Consolas, "Courier New", monospace;
+      white-space: pre-wrap;
+    }
+
+    .tabs {
+      display: grid;
+      gap: 18px;
+    }
+
+    .hint {
+      padding: 12px;
+      border-left: 4px solid var(--amber);
+      border-radius: 14px;
+      color: var(--muted);
+      background: rgba(214, 139, 53, 0.12);
+      font: 0.9rem/1.45 "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        position: static;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Fiscal API Dev Console</h1>
+    <p>Painel interno para testar cadastro de empresas, emissão NF-e/NFC-e, contingência, retry, XML e comprovante. A API continua protegida: este console só facilita enviar o header <code>X-API-Key</code>.</p>
+  </header>
+
+  <main>
+    <aside>
+      <h2>Conexão</h2>
+      <div class="stack">
+        <label>Base URL
+          <input id="baseUrl" value="" placeholder="http://localhost:8080">
+        </label>
+        <label>API key
+          <input id="apiKey" value="change-me" type="password">
+        </label>
+        <div class="actions">
+          <button id="saveSettings">Salvar</button>
+          <button id="loadCompanies" class="secondary">Listar empresas</button>
+          <button id="runSimulation" class="warn">Teste simulado</button>
+        </div>
+        <div class="hint">Use <strong>STUB</strong> no `application.yml` para testes sem certificado. O botão de teste simulado cria uma empresa fake e emite uma NFC-e automaticamente.</div>
+      </div>
+
+      <h3>Empresas</h3>
+      <div id="companies" class="cards"></div>
+    </aside>
+
+    <div class="tabs">
+      <section>
+        <h2>Cadastrar Empresa</h2>
+        <form id="companyForm" class="grid">
+          <label>Razão social <input name="legalName" value="Empresa Exemplo LTDA" required></label>
+          <label>Nome fantasia <input name="tradeName" value="Empresa Exemplo"></label>
+          <label>CNPJ <input name="taxId" value="12345678000199" required></label>
+          <label>Inscrição estadual <input name="stateRegistration" value="123456789" required></label>
+          <label>UF <input name="stateCode" value="BA" maxlength="2" required></label>
+          <label>Regime tributário
+            <select name="taxRegime">
+              <option value="SIMPLES_NACIONAL">Simples Nacional</option>
+              <option value="SIMPLES_NACIONAL_EXCESS_SUB_LIMIT">Simples excesso sublimite</option>
+              <option value="NORMAL">Normal</option>
+            </select>
+          </label>
+          <label>Logradouro <input name="street" value="Rua Fiscal" required></label>
+          <label>Número <input name="addressNumber" value="100" required></label>
+          <label>Complemento <input name="addressComplement" value="Sala 01"></label>
+          <label>Bairro <input name="district" value="Centro" required></label>
+          <label>Código município IBGE <input name="cityCode" value="2927408" required></label>
+          <label>Município <input name="cityName" value="Salvador" required></label>
+          <label>CEP <input name="zipCode" value="40000000" required></label>
+          <label>Telefone <input name="phone" value="7133334444"></label>
+          <label>Ambiente
+            <select name="fiscalEnvironment">
+              <option value="HOMOLOGATION">Homologação</option>
+              <option value="PRODUCTION">Produção</option>
+            </select>
+          </label>
+          <label>Certificado PFX <input name="certificatePath" placeholder="C:/certificados/empresa.pfx"></label>
+          <label>Senha certificado <input name="certificatePassword" type="password"></label>
+          <label>CSC ID <input name="cscId" value="000001"></label>
+          <label>CSC Token <input name="cscToken" value="token-csc"></label>
+          <label>Série NF-e <input name="nfeSeriesNumber" value="1" type="number" min="1"></label>
+          <label>Próx. NF-e <input name="nextNfeNumber" value="1" type="number" min="1"></label>
+          <label>Série NFC-e <input name="nfceSeriesNumber" value="1" type="number" min="1"></label>
+          <label>Próx. NFC-e <input name="nextNfceNumber" value="1" type="number" min="1"></label>
+          <div class="actions full">
+            <button>Cadastrar empresa</button>
+          </div>
+        </form>
+      </section>
+
+      <section>
+        <h2>Emitir Documento</h2>
+        <form id="documentForm" class="grid">
+          <label>Empresa
+            <select name="companyId" id="companySelect" required></select>
+          </label>
+          <label>Modelo
+            <select name="model">
+              <option value="NFCE">NFC-e</option>
+              <option value="NFE">NF-e</option>
+            </select>
+          </label>
+          <label>Referência externa <input name="externalReference" id="externalReference" required></label>
+          <label>Cliente <input name="customerName" value="Cliente Teste" required></label>
+          <label>Total <input name="totalAmount" value="199.90" type="number" step="0.01" required></label>
+          <label class="full">Itens JSON
+            <textarea name="items" id="itemsJson">[
+  {
+    "sku": "PROD-001",
+    "description": "Produto A",
+    "ncm": "01012100",
+    "cest": null,
+    "gtin": "SEM GTIN",
+    "cfop": "5102",
+    "unit": "UN",
+    "quantity": 1,
+    "unitAmount": 199.90,
+    "totalAmount": 199.90,
+    "origin": "0",
+    "icmsCode": "102",
+    "pisCode": "49",
+    "cofinsCode": "49",
+    "approximateTaxAmount": 0
+  }
+]</textarea>
+          </label>
+          <div class="actions full">
+            <button>Emitir</button>
+            <button type="button" id="newReference" class="secondary">Nova referência</button>
+          </div>
+        </form>
+      </section>
+
+      <section>
+        <h2>Consultar Documentos</h2>
+        <div class="grid">
+          <label>Empresa
+            <select id="documentCompanySelect"></select>
+          </label>
+          <div class="actions">
+            <button id="loadDocuments" type="button">Listar documentos</button>
+          </div>
+        </div>
+        <div id="documents" class="cards"></div>
+      </section>
+
+      <section>
+        <h2>Resultado</h2>
+        <pre id="output">Aguardando ação...</pre>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const output = $("#output");
+    const companiesEl = $("#companies");
+    const documentsEl = $("#documents");
+    const companySelect = $("#companySelect");
+    const documentCompanySelect = $("#documentCompanySelect");
+
+    const state = {
+      companies: [],
+      documents: []
+    };
+
+    function baseUrl() {
+      return ($("#baseUrl").value || window.location.origin).replace(/\/$/, "");
+    }
+
+    function apiKey() {
+      return $("#apiKey").value;
+    }
+
+    function log(value) {
+      output.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+    }
+
+    async function request(path, options = {}) {
+      const response = await fetch(baseUrl() + path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": apiKey(),
+          ...(options.headers || {})
+        }
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const body = contentType.includes("json") ? await response.json() : await response.text();
+
+      if (!response.ok) {
+        throw new Error(typeof body === "string" ? body : JSON.stringify(body));
+      }
+
+      return body;
+    }
+
+    function formToObject(form) {
+      return Object.fromEntries(new FormData(form).entries());
+    }
+
+    function cleanPayload(payload) {
+      return Object.fromEntries(Object.entries(payload).map(([key, value]) => {
+        if (value === "") return [key, null];
+        if (["nfeSeriesNumber", "nextNfeNumber", "nfceSeriesNumber", "nextNfceNumber"].includes(key)) {
+          return [key, Number(value)];
+        }
+        if (key === "stateCode") return [key, value.toUpperCase()];
+        return [key, value];
+      }));
+    }
+
+    function createPrintWindow() {
+      const printWindow = window.open("about:blank", "_blank");
+      if (!printWindow) {
+        log("O navegador bloqueou a janela de impressão. Libere pop-ups para este endereço e tente novamente.");
+        return null;
+      }
+
+      printWindow.document.open();
+      printWindow.document.write("<!doctype html><title>Carregando impressão...</title><body>Carregando impressão...</body>");
+      printWindow.document.close();
+      return printWindow;
+    }
+
+    function writePrintableHtml(printWindow, html) {
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.addEventListener("load", () => printWindow.print(), { once: true });
+    }
+
+    function simulationCompanyPayload() {
+      const suffix = String(Date.now()).slice(-8);
+      return {
+        legalName: `Empresa Simulada ${suffix} LTDA`,
+        tradeName: `Simulada ${suffix}`,
+        taxId: `123456${suffix}`,
+        stateRegistration: `IS${suffix}`.replace(/\D/g, "").padEnd(9, "0").slice(0, 9),
+        stateCode: "BA",
+        street: "Rua Fiscal",
+        addressNumber: "100",
+        addressComplement: "Sala Dev",
+        district: "Centro",
+        cityCode: "2927408",
+        cityName: "Salvador",
+        zipCode: "40000000",
+        phone: "7133334444",
+        taxRegime: "SIMPLES_NACIONAL",
+        fiscalEnvironment: "HOMOLOGATION",
+        certificatePath: null,
+        certificatePassword: null,
+        cscId: "000001",
+        cscToken: "token-csc",
+        nfeSeriesNumber: 1,
+        nextNfeNumber: 1,
+        nfceSeriesNumber: 1,
+        nextNfceNumber: 1
+      };
+    }
+
+    function simulationDocumentPayload(companyId) {
+      const reference = `SIM-${Date.now()}`;
+      return {
+        companyId,
+        model: "NFCE",
+        externalReference: reference,
+        customerName: "Consumidor Simulado",
+        totalAmount: 199.90,
+        items: [
+          {
+            sku: "SIM-001",
+            description: "Produto Simulado",
+            ncm: "01012100",
+            cest: null,
+            gtin: "SEM GTIN",
+            cfop: "5102",
+            unit: "UN",
+            quantity: 1,
+            unitAmount: 199.90,
+            totalAmount: 199.90,
+            origin: "0",
+            icmsCode: "102",
+            pisCode: "49",
+            cofinsCode: "49",
+            approximateTaxAmount: 0
+          }
+        ]
+      };
+    }
+
+    function renderCompanies() {
+      companiesEl.innerHTML = "";
+      companySelect.innerHTML = "";
+      documentCompanySelect.innerHTML = "";
+
+      for (const company of state.companies) {
+        const option = new Option(`${company.legalName} (${company.taxId})`, company.id);
+        const option2 = new Option(`${company.legalName} (${company.taxId})`, company.id);
+        companySelect.add(option);
+        documentCompanySelect.add(option2);
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <strong>${company.legalName}</strong>
+          <div class="meta">${company.id}</div>
+          <div class="meta">CNPJ ${company.taxId} | ${company.stateCode} | ${company.fiscalEnvironment}</div>
+          <div class="meta">NF-e ${company.nfeSeriesNumber}/${company.nextNfeNumber} · NFC-e ${company.nfceSeriesNumber}/${company.nextNfceNumber}</div>
+        `;
+        companiesEl.append(card);
+      }
+    }
+
+    function renderDocuments() {
+      documentsEl.innerHTML = "";
+      for (const doc of state.documents) {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <strong>${doc.model} ${doc.seriesNumber}/${doc.invoiceNumber}</strong>
+          <div class="meta">${doc.id}</div>
+          <div class="meta">Ref: ${doc.externalReference} · Valor: ${doc.totalAmount}</div>
+          <div class="meta">Chave: ${doc.accessKey || "pendente"}</div>
+          <span class="status ${doc.status}">${doc.status}</span>
+          <div class="actions">
+            <button class="secondary" data-action="get" data-id="${doc.id}">Detalhes</button>
+            <button class="secondary" data-action="receipt" data-id="${doc.id}">Recibo</button>
+            <button class="secondary" data-action="xml" data-id="${doc.id}">XML</button>
+            <button class="secondary" data-action="print" data-id="${doc.id}">Imprimir</button>
+            <button class="warn" data-action="retry" data-id="${doc.id}">Retry</button>
+          </div>
+        `;
+        documentsEl.append(card);
+      }
+    }
+
+    async function loadCompanies() {
+      const result = await request("/api/v1/companies");
+      state.companies = result.data || [];
+      renderCompanies();
+      log(result);
+    }
+
+    async function loadDocuments() {
+      const companyId = documentCompanySelect.value || companySelect.value;
+      if (!companyId) {
+        log("Cadastre ou selecione uma empresa primeiro.");
+        return;
+      }
+      const result = await request(`/api/v1/documents?companyId=${companyId}`);
+      state.documents = result.data || [];
+      renderDocuments();
+      log(result);
+    }
+
+    $("#saveSettings").addEventListener("click", () => {
+      localStorage.setItem("fiscal-dev-base-url", $("#baseUrl").value);
+      localStorage.setItem("fiscal-dev-api-key", $("#apiKey").value);
+      log("Configurações salvas no navegador.");
+    });
+
+    $("#loadCompanies").addEventListener("click", async () => {
+      try {
+        await loadCompanies();
+      } catch (error) {
+        log(error.message);
+      }
+    });
+
+    $("#runSimulation").addEventListener("click", async () => {
+      try {
+        log("Rodando teste simulado...");
+        const companyResult = await request("/api/v1/companies", {
+          method: "POST",
+          body: JSON.stringify(simulationCompanyPayload())
+        });
+        const company = companyResult.data;
+        const documentResult = await request("/api/v1/documents", {
+          method: "POST",
+          body: JSON.stringify(simulationDocumentPayload(company.id))
+        });
+
+        await loadCompanies();
+        companySelect.value = company.id;
+        documentCompanySelect.value = company.id;
+        await loadDocuments();
+
+        const document = documentResult.data;
+        const receipt = await request(`/api/v1/documents/${document.id}/receipt`, { headers: { Accept: "text/plain" } });
+        const xml = await request(`/api/v1/documents/${document.id}/xml`, { headers: { Accept: "application/xml" } });
+
+        log({
+          message: "Teste simulado concluido",
+          company,
+          document,
+          receipt,
+          xml
+        });
+      } catch (error) {
+        log(error.message);
+      }
+    });
+
+    $("#companyForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const payload = cleanPayload(formToObject(event.currentTarget));
+        const result = await request("/api/v1/companies", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        log(result);
+        await loadCompanies();
+      } catch (error) {
+        log(error.message);
+      }
+    });
+
+    $("#documentForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const form = formToObject(event.currentTarget);
+        const payload = {
+          companyId: form.companyId,
+          model: form.model,
+          externalReference: form.externalReference,
+          customerName: form.customerName,
+          totalAmount: Number(form.totalAmount),
+          items: JSON.parse(form.items)
+        };
+        const result = await request("/api/v1/documents", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        log(result);
+        await loadDocuments();
+      } catch (error) {
+        log(error.message);
+      }
+    });
+
+    $("#newReference").addEventListener("click", () => {
+      $("#externalReference").value = `PEDIDO-${Date.now()}`;
+    });
+
+    $("#loadDocuments").addEventListener("click", async () => {
+      try {
+        await loadDocuments();
+      } catch (error) {
+        log(error.message);
+      }
+    });
+
+    documentsEl.addEventListener("click", async (event) => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const id = button.dataset.id;
+      const action = button.dataset.action;
+      try {
+        if (action === "get") log(await request(`/api/v1/documents/${id}`));
+        if (action === "receipt") log(await request(`/api/v1/documents/${id}/receipt`, { headers: { Accept: "text/plain" } }));
+        if (action === "xml") log(await request(`/api/v1/documents/${id}/xml`, { headers: { Accept: "application/xml" } }));
+        if (action === "print") {
+          const printWindow = createPrintWindow();
+          if (!printWindow) return;
+          const html = await request(`/api/v1/documents/${id}/print`, { headers: { Accept: "text/html" } });
+          writePrintableHtml(printWindow, html);
+        }
+        if (action === "retry") {
+          log(await request(`/api/v1/documents/${id}/retry`, { method: "POST" }));
+          await loadDocuments();
+        }
+      } catch (error) {
+        log(error.message);
+      }
+    });
+
+    function boot() {
+      $("#baseUrl").value = localStorage.getItem("fiscal-dev-base-url") || window.location.origin;
+      $("#apiKey").value = localStorage.getItem("fiscal-dev-api-key") || "change-me";
+      $("#externalReference").value = `PEDIDO-${Date.now()}`;
+    }
+
+    boot();
+  </script>
+</body>
+</html>

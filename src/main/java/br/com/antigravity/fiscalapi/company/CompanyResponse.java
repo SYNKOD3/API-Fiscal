@@ -1,0 +1,61 @@
+package br.com.antigravity.fiscalapi.company;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+public record CompanyResponse(
+    UUID id,
+    String legalName,
+    String taxId,
+    String stateRegistration,
+    String stateCode,
+    String tradeName,
+    String street,
+    String addressNumber,
+    String addressComplement,
+    String district,
+    String cityCode,
+    String cityName,
+    String zipCode,
+    String phone,
+    TaxRegime taxRegime,
+    FiscalEnvironment fiscalEnvironment,
+    boolean certificateConfigured,
+    boolean cscConfigured,
+    int nfeSeriesNumber,
+    long nextNfeNumber,
+    int nfceSeriesNumber,
+    long nextNfceNumber,
+    boolean active,
+    OffsetDateTime createdAt
+) {
+    public static CompanyResponse from(Company company) {
+        return new CompanyResponse(
+            company.getId(),
+            company.getLegalName(),
+            company.getTaxId(),
+            company.getStateRegistration(),
+            company.getStateCode(),
+            company.getTradeName(),
+            company.getStreet(),
+            company.getAddressNumber(),
+            company.getAddressComplement(),
+            company.getDistrict(),
+            company.getCityCode(),
+            company.getCityName(),
+            company.getZipCode(),
+            company.getPhone(),
+            company.getTaxRegime(),
+            company.getFiscalEnvironment(),
+            company.getCertificatePath() != null && !company.getCertificatePath().isBlank(),
+            company.getCscId() != null && !company.getCscId().isBlank()
+                && company.getCscToken() != null && !company.getCscToken().isBlank(),
+            company.getNfeSeriesNumber(),
+            company.getNextNfeNumber(),
+            company.getNfceSeriesNumber(),
+            company.getNextNfceNumber(),
+            company.isActive(),
+            company.getCreatedAt()
+        );
+    }
+}

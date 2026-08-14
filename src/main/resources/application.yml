@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: fiscal-api
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: jdbc:h2:mem:fiscaldb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    time-zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+server:
+  port: ${SERVER_PORT:8081}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: alpha
+    tags-sorter: alpha
+    doc-expansion: none
+  api-docs:
+    path: /v3/api-docs
+  writer-with-order-by-keys: true
+
+app:
+  security:
+    api-key: ak-LI1ZYNEVQCQsLp1LP10rXd2DCaUSv
+  fiscal:
+    provider: STUB
+    stub-online: true
+  retry:
+    fixed-delay-ms: 30000
+    batch-size: 50
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/fiscal_api}
+    username: ${DATABASE_USERNAME:fiscal_api}
+    password: ${DATABASE_PASSWORD:fiscal_api}
+    driver-class-name: org.postgresql.Driver
+  h2:
+    console:
+      enabled: false
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false

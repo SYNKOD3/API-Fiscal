@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fiscal-api-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fiscal_api}
+      POSTGRES_USER: ${POSTGRES_USER:-fiscal_api}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - fiscal_api_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fiscal_api} -d ${POSTGRES_DB:-fiscal_api}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: fiscal-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8081
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-fiscal_api}
+      DATABASE_USERNAME: ${POSTGRES_USER:-fiscal_api}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_API_KEY: ${APP_API_KEY}
+      APP_SECRETS_KEY: ${APP_SECRETS_KEY}
+      FISCAL_PROVIDER: ${FISCAL_PROVIDER:-LIBRARY}
+      APP_DEV_CONSOLE_ENABLED: ${APP_DEV_CONSOLE_ENABLED:-false}
+      OPENAPI_ENABLED: ${OPENAPI_ENABLED:-false}
+      OPENAPI_PUBLIC_ACCESS: ${OPENAPI_PUBLIC_ACCESS:-false}
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+volumes:
+  fiscal_api_postgres:
