@@ -1,0 +1,68 @@
+package br.com.antigravity.fiscalapi.security;
+
+import br.com.antigravity.fiscalapi.company.Company;
+import br.com.antigravity.fiscalapi.shared.ForbiddenException;
+import java.util.Optional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+
+@Component
+public class JwtSecurityContext {
+
+    public Optional<JwtPrincipal> current() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof JwtPrincipal principal) {
+            return Optional.of(principal);
+        }
+        return Optional.empty();
+    }
+
+    public void requireBivaroAccess(String bivaroTenantId, String bivaroMerchantId) {
+        current().ifPresent(principal -> {
+            if (principal.scopes().contains("fiscal:admin")) {
+                return;
+            }
+            if (hasText(principal.bivaroTenantId()) && !principal.bivaroTenantId().equals(bivaroTenantId)) {
+                throw new ForbiddenException("JWT nao permite acesso ao tenant Bivaro informado");
+            }
+            if (hasText(principal.bivaroMerchantId()) && !principal.bivaroMerchantId().equals(bivaroMerchantId)) {
+                throw new ForbiddenException("JWT nao permite acesso ao lojista Bivaro informado");
+            }
+        });
+    }
+
+    public void requireCompanyAccess(Company company) {
+        current().ifPresent(principal -> {
+            if (principal.scopes().contains("fiscal:admin")) {
+                return;
+            }
+            if (hasText(principal.bivaroTenantId())
+                && !principal.bivaroTenantId().equals(company.getBivaroTenantId())) {
+                throw new ForbiddenException("JWT nao permite acesso a empresa emissora informada");
+            }
+            if (hasText(principal.bivaroMerchantId())
+                && !principal.bivaroMerchantId().equals(company.getBivaroMerchantId())) {
+                throw new ForbiddenException("JWT nao permite acesso a empresa emissora informada");
+            }
+        });
+    }
+
+    public String constrainedTenant(String requestedTenant) {
+        return current()
+            .filter(principal -> !principal.scopes().contains("fiscal:admin"))
+            .map(JwtPrincipal::bivaroTenantId)
+            .filter(this::hasText)
+            .map(tokenTenant -> {
+                if (hasText(requestedTenant) && !tokenTenant.equals(requestedTenant)) {
+                    throw new ForbiddenException("JWT nao permite consultar outro tenant Bivaro");
+                }
+                return tokenTenant;
+            })
+            .orElse(requestedTenant);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+}

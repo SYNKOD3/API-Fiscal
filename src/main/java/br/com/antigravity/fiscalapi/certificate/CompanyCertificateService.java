@@ -4,6 +4,7 @@ import br.com.antigravity.fiscalapi.audit.FiscalAuditService;
 import br.com.antigravity.fiscalapi.company.Company;
 import br.com.antigravity.fiscalapi.company.CompanyRepository;
 import br.com.antigravity.fiscalapi.config.AppProperties;
+import br.com.antigravity.fiscalapi.security.JwtSecurityContext;
 import br.com.antigravity.fiscalapi.shared.BadRequestException;
 import br.com.antigravity.fiscalapi.shared.ConflictException;
 import br.com.antigravity.fiscalapi.shared.NotFoundException;
@@ -30,23 +31,27 @@ public class CompanyCertificateService {
     private final CertificateMetadataReader metadataReader;
     private final FiscalAuditService auditService;
     private final AppProperties properties;
+    private final JwtSecurityContext jwtSecurityContext;
 
     public CompanyCertificateService(CompanyRepository companyRepository,
                                      CompanyCertificateRepository certificateRepository,
                                      CertificateMetadataReader metadataReader,
                                      FiscalAuditService auditService,
-                                     AppProperties properties) {
+                                     AppProperties properties,
+                                     JwtSecurityContext jwtSecurityContext) {
         this.companyRepository = companyRepository;
         this.certificateRepository = certificateRepository;
         this.metadataReader = metadataReader;
         this.auditService = auditService;
         this.properties = properties;
+        this.jwtSecurityContext = jwtSecurityContext;
     }
 
     @Transactional
     public CompanyCertificateResponse upload(UUID companyId, MultipartFile file, String password) {
         Company company = companyRepository.findByIdForUpdate(companyId)
             .orElseThrow(() -> new NotFoundException("Empresa nao encontrada"));
+        jwtSecurityContext.requireCompanyAccess(company);
 
         validateInput(file, password);
         byte[] certificateBytes = readBytes(file);
@@ -80,9 +85,9 @@ public class CompanyCertificateService {
 
     @Transactional(readOnly = true)
     public List<CompanyCertificateResponse> list(UUID companyId) {
-        if (!companyRepository.existsById(companyId)) {
-            throw new NotFoundException("Empresa nao encontrada");
-        }
+        Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new NotFoundException("Empresa nao encontrada"));
+        jwtSecurityContext.requireCompanyAccess(company);
         return certificateRepository.findByCompany_IdOrderByCreatedAtDesc(companyId).stream()
             .map(CompanyCertificateResponse::from)
             .toList();

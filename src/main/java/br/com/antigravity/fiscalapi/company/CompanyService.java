@@ -3,6 +3,7 @@ package br.com.antigravity.fiscalapi.company;
 import br.com.antigravity.fiscalapi.audit.FiscalAuditService;
 import br.com.antigravity.fiscalapi.certificate.CertificateStatus;
 import br.com.antigravity.fiscalapi.certificate.CompanyCertificateRepository;
+import br.com.antigravity.fiscalapi.security.JwtSecurityContext;
 import br.com.antigravity.fiscalapi.shared.ConflictException;
 import br.com.antigravity.fiscalapi.shared.NotFoundException;
 import java.util.List;
@@ -16,17 +17,21 @@ public class CompanyService {
     private final CompanyRepository companyRepository;
     private final CompanyCertificateRepository certificateRepository;
     private final FiscalAuditService auditService;
+    private final JwtSecurityContext jwtSecurityContext;
 
     public CompanyService(CompanyRepository companyRepository,
                           CompanyCertificateRepository certificateRepository,
-                          FiscalAuditService auditService) {
+                          FiscalAuditService auditService,
+                          JwtSecurityContext jwtSecurityContext) {
         this.companyRepository = companyRepository;
         this.certificateRepository = certificateRepository;
         this.auditService = auditService;
+        this.jwtSecurityContext = jwtSecurityContext;
     }
 
     @Transactional
     public CompanyResponse create(CreateCompanyRequest request) {
+        jwtSecurityContext.requireBivaroAccess(request.bivaroTenantId(), request.bivaroMerchantId());
         companyRepository.findByTaxId(request.taxId()).ifPresent(existing -> {
             throw new ConflictException("Empresa ja cadastrada para este CNPJ");
         });
@@ -75,21 +80,27 @@ public class CompanyService {
 
     @Transactional(readOnly = true)
     public List<CompanyResponse> list(String bivaroTenantId) {
-        return hasText(bivaroTenantId)
-            ? companyRepository.findByBivaroTenantIdOrderByCreatedAtDesc(bivaroTenantId).stream().map(this::response).toList()
+        String constrainedTenant = jwtSecurityContext.constrainedTenant(bivaroTenantId);
+        return hasText(constrainedTenant)
+            ? companyRepository.findByBivaroTenantIdOrderByCreatedAtDesc(constrainedTenant).stream().map(this::response).toList()
             : companyRepository.findAll().stream().map(this::response).toList();
     }
 
     @Transactional(readOnly = true)
     public Company getById(UUID id) {
-        return companyRepository.findById(id)
+        Company company = companyRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Empresa nao encontrada"));
+        jwtSecurityContext.requireCompanyAccess(company);
+        return company;
     }
 
     @Transactional(readOnly = true)
     public Company getByBivaroMerchant(String bivaroTenantId, String bivaroMerchantId) {
-        return companyRepository.findByBivaroTenantIdAndBivaroMerchantId(bivaroTenantId, bivaroMerchantId)
+        jwtSecurityContext.requireBivaroAccess(bivaroTenantId, bivaroMerchantId);
+        Company company = companyRepository.findByBivaroTenantIdAndBivaroMerchantId(bivaroTenantId, bivaroMerchantId)
             .orElseThrow(() -> new NotFoundException("Empresa emissora nao encontrada para o lojista Bivaro"));
+        jwtSecurityContext.requireCompanyAccess(company);
+        return company;
     }
 
     private boolean hasText(String value) {

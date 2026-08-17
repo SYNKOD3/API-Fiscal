@@ -11,6 +11,7 @@ public class ProductionReadinessValidator implements ApplicationRunner {
 
     private static final String DEV_API_KEY = "change-me";
     private static final String DEV_SECRETS_KEY = "dev-insecure-change-me";
+    private static final String DEV_JWT_SECRET = "change-me";
 
     private final AppProperties properties;
     private final Environment environment;
@@ -27,6 +28,7 @@ public class ProductionReadinessValidator implements ApplicationRunner {
         }
 
         requireStrongApiKey();
+        requireJwt();
         requireSecretsKey();
         requireLibraryProvider();
         requirePrivateDevTools();
@@ -52,6 +54,23 @@ public class ProductionReadinessValidator implements ApplicationRunner {
         );
         if (secret.isBlank() || DEV_SECRETS_KEY.equals(secret) || secret.length() < 32) {
             throw new IllegalStateException("Producao exige APP_SECRETS_KEY forte, fixa e com pelo menos 32 caracteres.");
+        }
+    }
+
+    private void requireJwt() {
+        AppProperties.Jwt jwt = properties.getSecurity().getJwt();
+        if (!jwt.isEnabled()) {
+            throw new IllegalStateException("Producao exige JWT_AUTH_ENABLED=true.");
+        }
+        String secret = jwt.getSecret();
+        if (secret == null || secret.isBlank() || DEV_JWT_SECRET.equals(secret) || secret.length() < 32) {
+            throw new IllegalStateException("Producao exige JWT_SECRET forte com pelo menos 32 caracteres.");
+        }
+        if (jwt.getIssuer() == null || jwt.getIssuer().isBlank()) {
+            throw new IllegalStateException("Producao exige JWT_ISSUER configurado.");
+        }
+        if (jwt.getAudience() == null || jwt.getAudience().isBlank()) {
+            throw new IllegalStateException("Producao exige JWT_AUDIENCE configurado.");
         }
     }
 

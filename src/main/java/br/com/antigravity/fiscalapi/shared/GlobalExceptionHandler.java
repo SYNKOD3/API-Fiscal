@@ -31,6 +31,12 @@ public class GlobalExceptionHandler {
         return error(request, "conflict", ex.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiError forbidden(ForbiddenException ex, HttpServletRequest request) {
+        return error(request, "forbidden", ex.getMessage());
+    }
+
     @ExceptionHandler({MethodArgumentNotValidException.class, ConstraintViolationException.class})
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     public ApiError validation(Exception ex, HttpServletRequest request) {

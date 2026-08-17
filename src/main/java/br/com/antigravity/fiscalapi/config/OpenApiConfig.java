@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     private static final String API_KEY_SCHEME = "Chave da API";
+    private static final String JWT_SCHEME = "JWT Bivaro";
 
     @Bean
     OpenAPI fiscalOpenApi() {
@@ -49,7 +50,12 @@ public class OpenApiConfig {
                     .type(SecurityScheme.Type.APIKEY)
                     .in(SecurityScheme.In.HEADER)
                     .name("X-API-Key")
-                    .description("Informe a chave configurada em app.security.api-key.")))
-            .addSecurityItem(new SecurityRequirement().addList(API_KEY_SCHEME));
+                    .description("Informe a chave configurada em app.security.api-key."))
+                .addSecuritySchemes(JWT_SCHEME, new SecurityScheme()
+                    .type(SecurityScheme.Type.HTTP)
+                    .scheme("bearer")
+                    .bearerFormat("JWT")
+                    .description("Informe o JWT curto emitido pelo backend da Bivaro.")))
+            .addSecurityItem(new SecurityRequirement().addList(API_KEY_SCHEME).addList(JWT_SCHEME));
     }
 }

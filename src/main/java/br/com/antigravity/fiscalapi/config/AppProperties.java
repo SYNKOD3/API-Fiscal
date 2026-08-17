@@ -40,6 +40,7 @@ public class AppProperties {
 
     public static class Security {
         private String apiKey = "change-me";
+        private final Jwt jwt = new Jwt();
 
         public String getApiKey() {
             return apiKey;
@@ -47,6 +48,49 @@ public class AppProperties {
 
         public void setApiKey(String apiKey) {
             this.apiKey = apiKey;
+        }
+
+        public Jwt getJwt() {
+            return jwt;
+        }
+    }
+
+    public static class Jwt {
+        private boolean enabled = false;
+        private String secret = "";
+        private String issuer = "bivaro";
+        private String audience = "fiscal-api";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getSecret() {
+            return secret;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+
+        public String getIssuer() {
+            return issuer;
+        }
+
+        public void setIssuer(String issuer) {
+            this.issuer = issuer;
+        }
+
+        public String getAudience() {
+            return audience;
+        }
+
+        public void setAudience(String audience) {
+            this.audience = audience;
         }
     }
 

@@ -16,6 +16,7 @@ Base Spring Boot para emissao de NF-e e NFC-e em ambiente multiempresa, com cont
 - Roteamento SEFAZ por UF da empresa emitente, nao pela UF do comprador.
 - Logs operacionais com `X-Request-Id`, status HTTP, tempo de resposta e motivo de erro para suporte.
 - Upload e gestao de certificado A1 por empresa emissora, com senha criptografada e storage privado.
+- Autenticacao dupla em producao: `X-API-Key` + JWT Bearer com escopos e isolamento por tenant/lojista.
 
 ## Fluxo operacional
 
@@ -52,6 +53,62 @@ Base Spring Boot para emissao de NF-e e NFC-e em ambiente multiempresa, com cont
 - `GET /api/v1/operational-logs?documentId={uuid}`
 - `GET /api/v1/operational-logs/requests/{requestId}`
 
+## Autenticacao e autorizacao
+
+Em producao, a API exige duas credenciais em cada chamada protegida:
+
+```http
+X-API-Key: chave-forte-da-integracao
+Authorization: Bearer <jwt-curto-emitido-pela-bivaro>
+```
+
+A `X-API-Key` identifica a integracao. O JWT autoriza a acao, o tenant, o lojista e os escopos permitidos.
+
+Claims esperadas no JWT:
+
+```json
+{
+  "iss": "bivaro",
+  "aud": "fiscal-api",
+  "sub": "bivaro-backend",
+  "jti": "uuid-unico-do-token",
+  "bivaroTenantId": "tenant-001",
+  "bivaroMerchantId": "merchant-001",
+  "scopes": [
+    "fiscal:documents:issue",
+    "fiscal:documents:read",
+    "fiscal:certificates:write"
+  ],
+  "exp": 1797532800
+}
+```
+
+Regras aplicadas:
+
+- JWT e validado com `HS256` e `JWT_SECRET`.
+- `iss` precisa bater com `JWT_ISSUER`.
+- `aud` precisa bater com `JWT_AUDIENCE`.
+- `exp` e obrigatorio e precisa estar no futuro.
+- Se o token tiver `bivaroTenantId` ou `bivaroMerchantId`, a API impede acesso a outra empresa/lojista.
+- O escopo `fiscal:admin` libera todos os endpoints protegidos.
+
+Escopos principais:
+
+```text
+fiscal:companies:write       POST /api/v1/companies
+fiscal:companies:read        GET /api/v1/companies
+fiscal:certificates:write    POST /api/v1/companies/{companyId}/certificates
+fiscal:certificates:read     GET /api/v1/companies/{companyId}/certificates
+fiscal:documents:issue       POST /api/v1/documents
+fiscal:documents:retry       POST /api/v1/documents/{id}/retry
+fiscal:documents:read        GET /api/v1/documents...
+fiscal:audit:read            GET /api/v1/audit...
+fiscal:logs:read             GET /api/v1/operational-logs...
+fiscal:sefaz:read            GET /api/v1/sefaz...
+```
+
+No perfil local/dev, `JWT_AUTH_ENABLED=false` por padrao para facilitar uso do console interno. No perfil `prod`, `JWT_AUTH_ENABLED=true` por padrao e a aplicacao nao sobe sem `JWT_SECRET` forte.
+
 ## Bivaro como SaaS fiscal
 
 O Bivaro e a plataforma intermediadora. A empresa emitente da NF-e/NFC-e e sempre o lojista cadastrado, com seu proprio CNPJ, UF, inscricao estadual, certificado, CSC, serie e numeracao.
@@ -71,6 +128,7 @@ A UF do comprador nao define a SEFAZ de emissao. A rota fiscal vem de `Company.s
 ```http
 POST /api/v1/companies
 X-API-Key: sua-chave-forte
+Authorization: Bearer jwt-curto-da-bivaro
 Content-Type: application/json
 
 {
@@ -123,6 +181,7 @@ Endpoint:
 ```http
 POST /api/v1/companies/{companyId}/certificates
 X-API-Key: sua-chave-forte
+Authorization: Bearer jwt-curto-da-bivaro
 Content-Type: multipart/form-data
 
 file=@empresa.pfx
@@ -154,6 +213,7 @@ A API tenta extrair o CNPJ do certificado e bloqueia o upload quando o CNPJ extr
 ```http
 POST /api/v1/documents
 X-API-Key: sua-chave-forte
+Authorization: Bearer jwt-curto-da-bivaro
 Content-Type: application/json
 
 {
@@ -298,6 +358,8 @@ Edite o `.env` com valores reais. Os campos obrigatorios sao:
 - `POSTGRES_PASSWORD`: senha forte do banco.
 - `APP_API_KEY`: chave forte usada pelo seu sistema no header `X-API-Key`.
 - `APP_SECRETS_KEY`: chave fixa com pelo menos 32 caracteres para criptografar senha do certificado e CSC.
+- `JWT_SECRET`: chave forte com pelo menos 32 caracteres para validar os JWTs emitidos pela Bivaro.
+- `JWT_ISSUER` e `JWT_AUDIENCE`: emissor e audiencia esperados no JWT.
 - `FISCAL_PROVIDER=LIBRARY`: usa a camada da biblioteca fiscal real.
 - `CERTIFICATE_STORAGE_PATH`: pasta/volume privado e persistente para armazenar os arquivos `.pfx/.p12`.
 
@@ -316,6 +378,10 @@ $env:DATABASE_USERNAME="fiscal_api"
 $env:DATABASE_PASSWORD="senha-forte-do-banco"
 $env:APP_API_KEY="chave-forte-com-mais-de-24-caracteres"
 $env:APP_SECRETS_KEY="chave-fixa-com-mais-de-32-caracteres"
+$env:JWT_AUTH_ENABLED="true"
+$env:JWT_SECRET="chave-jwt-com-mais-de-32-caracteres"
+$env:JWT_ISSUER="bivaro"
+$env:JWT_AUDIENCE="fiscal-api"
 $env:FISCAL_PROVIDER="LIBRARY"
 $env:CERTIFICATE_STORAGE_PATH="C:/fiscal-api/certificates"
 $env:APP_DEV_CONSOLE_ENABLED="false"
@@ -327,6 +393,7 @@ java -jar target/fiscal-api-0.0.1-SNAPSHOT.jar
 Travas aplicadas no perfil `prod`:
 
 - A aplicacao nao sobe se `APP_API_KEY` estiver ausente, curta ou `change-me`.
+- A aplicacao nao sobe se JWT estiver desligado ou `JWT_SECRET` estiver ausente/fraco.
 - A aplicacao nao sobe se `APP_SECRETS_KEY` estiver ausente, curta ou com valor dev.
 - A aplicacao nao sobe se `FISCAL_PROVIDER` nao for `LIBRARY`.
 - A aplicacao nao sobe se `/dev` ou Swagger publico estiverem ligados.

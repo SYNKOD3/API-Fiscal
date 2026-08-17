@@ -14,6 +14,7 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             ApiKeyFilter apiKeyFilter,
+                                            JwtAuthenticationFilter jwtAuthenticationFilter,
                                             AppProperties properties) throws Exception {
         return http
             .csrf(AbstractHttpConfigurer::disable)
@@ -31,6 +32,7 @@ public class SecurityConfig {
                 auth.anyRequest().authenticated();
             })
             .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(jwtAuthenticationFilter, ApiKeyFilter.class)
             .build();
     }
 }

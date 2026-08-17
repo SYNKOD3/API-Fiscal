@@ -8,6 +8,7 @@ import br.com.antigravity.fiscalapi.company.CreateCompanyRequest;
 import br.com.antigravity.fiscalapi.company.FiscalEnvironment;
 import br.com.antigravity.fiscalapi.company.CompanyService;
 import br.com.antigravity.fiscalapi.company.TaxRegime;
+import br.com.antigravity.fiscalapi.config.AppProperties;
 import br.com.antigravity.fiscalapi.document.DocumentModel;
 import br.com.antigravity.fiscalapi.document.FiscalItemRequest;
 import br.com.antigravity.fiscalapi.document.IssueDocumentRequest;
@@ -15,9 +16,16 @@ import br.com.antigravity.fiscalapi.document.FiscalDocumentService;
 import br.com.antigravity.fiscalapi.operational.OperationalLogLevel;
 import br.com.antigravity.fiscalapi.operational.OperationalLogRecord;
 import br.com.antigravity.fiscalapi.operational.OperationalLogService;
+import br.com.antigravity.fiscalapi.security.JwtTokenService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import br.com.antigravity.fiscalapi.sefaz.SefazRouter;
+import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -177,6 +185,41 @@ class FiscalApiApplicationTests {
         assertThat(operationalLogService.getByRequestId("req-test-001").statusCode()).isEqualTo(422);
     }
 
+    @Test
+    void validatesBivaroJwtClaimsAndScopes() throws Exception {
+        AppProperties properties = new AppProperties();
+        properties.getSecurity().getJwt().setSecret("jwt-secret-for-tests-with-more-than-32-characters");
+        properties.getSecurity().getJwt().setIssuer("bivaro");
+        properties.getSecurity().getJwt().setAudience("fiscal-api");
+
+        ObjectMapper mapper = new ObjectMapper();
+        JwtTokenService tokenService = new JwtTokenService(properties, mapper);
+        String token = jwt(
+            mapper,
+            properties.getSecurity().getJwt().getSecret(),
+            """
+                {
+                  "iss": "bivaro",
+                  "aud": "fiscal-api",
+                  "sub": "bivaro-backend",
+                  "jti": "jwt-test-001",
+                  "bivaroTenantId": "tenant-001",
+                  "bivaroMerchantId": "merchant-001",
+                  "scopes": ["fiscal:documents:issue", "fiscal:certificates:write"],
+                  "exp": %d
+                }
+                """.formatted(Instant.now().plusSeconds(300).getEpochSecond())
+        );
+
+        var principal = tokenService.validate(token);
+
+        assertThat(principal.subject()).isEqualTo("bivaro-backend");
+        assertThat(principal.bivaroTenantId()).isEqualTo("tenant-001");
+        assertThat(principal.bivaroMerchantId()).isEqualTo("merchant-001");
+        assertThat(principal.hasScope("fiscal:documents:issue")).isTrue();
+        assertThat(principal.hasScope("fiscal:logs:read")).isFalse();
+    }
+
     private FiscalItemRequest item(String sku, String description, BigDecimal totalAmount) {
         return new FiscalItemRequest(
             sku,
@@ -195,5 +238,16 @@ class FiscalApiApplicationTests {
             "49",
             BigDecimal.ZERO
         );
+    }
+
+    private String jwt(ObjectMapper mapper, String secret, String payloadJson) throws Exception {
+        Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+        String header = encoder.encodeToString(mapper.writeValueAsBytes(java.util.Map.of("alg", "HS256", "typ", "JWT")));
+        String payload = encoder.encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
+        String signedContent = header + "." + payload;
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        String signature = encoder.encodeToString(mac.doFinal(signedContent.getBytes(StandardCharsets.UTF_8)));
+        return signedContent + "." + signature;
     }
 }

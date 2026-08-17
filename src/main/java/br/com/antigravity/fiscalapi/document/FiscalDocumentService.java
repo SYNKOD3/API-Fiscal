@@ -2,6 +2,7 @@ package br.com.antigravity.fiscalapi.document;
 
 import br.com.antigravity.fiscalapi.audit.FiscalAuditService;
 import br.com.antigravity.fiscalapi.company.Company;
+import br.com.antigravity.fiscalapi.company.CompanyRepository;
 import br.com.antigravity.fiscalapi.company.FiscalEnvironment;
 import br.com.antigravity.fiscalapi.fiscal.FiscalGateway;
 import br.com.antigravity.fiscalapi.fiscal.FiscalGatewayException;
@@ -9,6 +10,7 @@ import br.com.antigravity.fiscalapi.fiscal.FiscalSubmission;
 import br.com.antigravity.fiscalapi.fiscal.FiscalXmlBuilder;
 import br.com.antigravity.fiscalapi.fiscal.FiscalXmlDraft;
 import br.com.antigravity.fiscalapi.fiscal.FiscalXmlPreviewRenderer;
+import br.com.antigravity.fiscalapi.security.JwtSecurityContext;
 import br.com.antigravity.fiscalapi.shared.BadRequestException;
 import br.com.antigravity.fiscalapi.shared.ConflictException;
 import br.com.antigravity.fiscalapi.shared.NotFoundException;
@@ -27,27 +29,33 @@ import org.springframework.transaction.annotation.Transactional;
 public class FiscalDocumentService {
 
     private final FiscalDocumentRepository documentRepository;
+    private final CompanyRepository companyRepository;
     private final FiscalNumberAllocator fiscalNumberAllocator;
     private final FiscalGateway fiscalGateway;
     private final FiscalXmlBuilder fiscalXmlBuilder;
     private final FiscalXmlPreviewRenderer fiscalXmlPreviewRenderer;
     private final FiscalAuditService auditService;
     private final ObjectMapper objectMapper;
+    private final JwtSecurityContext jwtSecurityContext;
 
     public FiscalDocumentService(FiscalDocumentRepository documentRepository,
+                                 CompanyRepository companyRepository,
                                  FiscalNumberAllocator fiscalNumberAllocator,
                                  FiscalGateway fiscalGateway,
                                  FiscalXmlBuilder fiscalXmlBuilder,
                                  FiscalXmlPreviewRenderer fiscalXmlPreviewRenderer,
                                  FiscalAuditService auditService,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 JwtSecurityContext jwtSecurityContext) {
         this.documentRepository = documentRepository;
+        this.companyRepository = companyRepository;
         this.fiscalNumberAllocator = fiscalNumberAllocator;
         this.fiscalGateway = fiscalGateway;
         this.fiscalXmlBuilder = fiscalXmlBuilder;
         this.fiscalXmlPreviewRenderer = fiscalXmlPreviewRenderer;
         this.auditService = auditService;
         this.objectMapper = objectMapper;
+        this.jwtSecurityContext = jwtSecurityContext;
     }
 
     @Transactional
@@ -56,6 +64,7 @@ public class FiscalDocumentService {
 
         FiscalNumberAllocation allocation = allocateFiscalNumber(request);
         Company company = allocation.company();
+        jwtSecurityContext.requireCompanyAccess(company);
 
         documentRepository.findByCompany_IdAndExternalReference(company.getId(), request.externalReference())
             .ifPresent(existing -> {
@@ -81,17 +90,23 @@ public class FiscalDocumentService {
 
     @Transactional(readOnly = true)
     public DocumentResponse getById(UUID id) {
-        return DocumentResponse.from(loadDocument(id));
+        FiscalDocument document = loadDocument(id);
+        jwtSecurityContext.requireCompanyAccess(document.getCompany());
+        return DocumentResponse.from(document);
     }
 
     @Transactional(readOnly = true)
     public List<DocumentResponse> list(UUID companyId) {
+        Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new NotFoundException("Empresa nao encontrada"));
+        jwtSecurityContext.requireCompanyAccess(company);
         return documentRepository.findByCompany_Id(companyId).stream().map(DocumentResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
     public String getReceipt(UUID id) {
         FiscalDocument document = loadDocument(id);
+        jwtSecurityContext.requireCompanyAccess(document.getCompany());
         if (document.getReceiptContent() == null || document.getReceiptContent().isBlank()) {
             throw new NotFoundException("Comprovante fiscal ainda nao disponivel");
         }
@@ -101,6 +116,7 @@ public class FiscalDocumentService {
     @Transactional(readOnly = true)
     public String getFiscalXml(UUID id) {
         FiscalDocument document = loadDocument(id);
+        jwtSecurityContext.requireCompanyAccess(document.getCompany());
         if (document.getFiscalXml() == null || document.getFiscalXml().isBlank()) {
             throw new NotFoundException("XML fiscal ainda nao disponivel");
         }
@@ -110,6 +126,7 @@ public class FiscalDocumentService {
     @Transactional(readOnly = true)
     public String getPrintableDocument(UUID id) {
         FiscalDocument document = loadDocument(id);
+        jwtSecurityContext.requireCompanyAccess(document.getCompany());
         return """
             <!doctype html>
             <html lang="pt-BR">
@@ -161,6 +178,7 @@ public class FiscalDocumentService {
     @Transactional
     public DocumentResponse retry(UUID id) {
         FiscalDocument document = loadDocument(id);
+        jwtSecurityContext.requireCompanyAccess(document.getCompany());
         process(document, extractItems(document));
         return DocumentResponse.from(document);
     }

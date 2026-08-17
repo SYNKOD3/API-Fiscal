@@ -54,6 +54,11 @@ management:
 app:
   security:
     api-key: ${APP_API_KEY:change-me}
+    jwt:
+      enabled: ${JWT_AUTH_ENABLED:false}
+      secret: ${JWT_SECRET:}
+      issuer: ${JWT_ISSUER:bivaro}
+      audience: ${JWT_AUDIENCE:fiscal-api}
   fiscal:
     provider: ${FISCAL_PROVIDER:STUB}
     stub-online: ${FISCAL_STUB_ONLINE:true}
@@ -112,6 +117,11 @@ springdoc:
 app:
   security:
     api-key: ${APP_API_KEY}
+    jwt:
+      enabled: ${JWT_AUTH_ENABLED:true}
+      secret: ${JWT_SECRET}
+      issuer: ${JWT_ISSUER:bivaro}
+      audience: ${JWT_AUDIENCE:fiscal-api}
   fiscal:
     provider: ${FISCAL_PROVIDER:LIBRARY}
     stub-online: false
