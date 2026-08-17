@@ -1,79 +1,176 @@
 # Fiscal API
 
-Base Spring Boot para emissao de NF-e e NFC-e em ambiente multiempresa, com contingencia local quando a SEFAZ estiver indisponivel.
+API Spring Boot para emissão fiscal multiempresa, com suporte a NF-e, NFC-e, contingência local, retry automático, auditoria, logs operacionais, certificados A1 por empresa e autenticação para integração entre plataformas externas e a SEFAZ.
 
-## O que esta base entrega
+## Funcionalidades
 
-- Cadastro de multiplas empresas emissoras.
-- API protegida por `X-API-Key` para integracao com o seu sistema.
-- Suporte ao modelo `NFE` e ao modelo `NFCE` por requisicao.
-- Emissao desacoplada por `FiscalGateway`, facilitando a troca pelo seu SDK/lib fiscal existente.
-- Contingencia automatica: quando o gateway fiscal ficar indisponivel, o documento fica salvo e um comprovante local e gerado.
-- Reprocessamento automatico em background para transmissao posterior.
-- Swagger em `/swagger-ui/index.html` apenas quando habilitado.
-- Perfil `prod` com PostgreSQL, Flyway, console dev fechado e validacao de segredos no boot.
-- Vinculo com lojistas do Bivaro por `bivaroTenantId` e `bivaroMerchantId`.
-- Roteamento SEFAZ por UF da empresa emitente, nao pela UF do comprador.
-- Logs operacionais com `X-Request-Id`, status HTTP, tempo de resposta e motivo de erro para suporte.
-- Upload e gestao de certificado A1 por empresa emissora, com senha criptografada e storage privado.
-- Autenticacao dupla em producao: `X-API-Key` + JWT Bearer com escopos e isolamento por tenant/lojista.
+- Cadastro de empresas emissoras com CNPJ, IE, UF, endereço, regime tributário, séries e numeração fiscal.
+- Emissão de NF-e modelo 55 e NFC-e modelo 65.
+- Contingência automática quando o serviço fiscal estiver indisponível.
+- Reprocessamento em background de documentos pendentes.
+- Upload de certificado A1 `.pfx` ou `.p12` por empresa emissora.
+- Senhas sensíveis criptografadas no banco de dados.
+- Roteamento SEFAZ pela UF da empresa emitente.
+- Auditoria de eventos fiscais por empresa e documento.
+- Logs operacionais com `X-Request-Id`, status HTTP e tempo de resposta.
+- Autenticação por `X-API-Key` e JWT Bearer em produção.
+- Swagger opcional para desenvolvimento.
+- Console dev opcional para testes locais.
 
-## Fluxo operacional
+## Arquitetura Geral
 
-1. Seu sistema chama `POST /api/v1/documents`.
-2. A aplicacao localiza a empresa emissora pelo `companyId` ou por `bivaroTenantId + bivaroMerchantId`.
-3. A rota SEFAZ e definida pela UF da empresa emissora.
-4. Se a SEFAZ estiver online, o gateway autoriza o documento.
-5. Se a SEFAZ cair, o documento entra em `CONTINGENCY_PENDING` com recibo local.
-6. O XML local e o comprovante ficam disponiveis para consulta/download.
-7. O agendador tenta reenviar automaticamente ate conseguir a autorizacao.
-
-## Endpoints principais
-
-- `POST /api/v1/companies`
-- `GET /api/v1/companies`
-- `GET /api/v1/companies?bivaroTenantId={tenant}`
-- `POST /api/v1/companies/{companyId}/certificates`
-- `GET /api/v1/companies/{companyId}/certificates`
-- `POST /api/v1/documents`
-- `GET /api/v1/documents/{id}`
-- `GET /api/v1/documents?companyId={uuid}`
-- `POST /api/v1/documents/{id}/retry`
-- `GET /api/v1/documents/{id}/receipt`
-- `GET /api/v1/documents/{id}/xml`
-- `GET /api/v1/documents/{id}/print`
-- `GET /api/v1/sefaz/states`
-- `GET /api/v1/sefaz/companies/{companyId}/route?model=NFCE`
-- `GET /api/v1/sefaz/bivaro-route?bivaroTenantId={tenant}&bivaroMerchantId={merchant}&model=NFCE`
-- `GET /api/v1/audit/companies/{companyId}`
-- `GET /api/v1/audit/documents/{documentId}`
-- `GET /api/v1/operational-logs`
-- `GET /api/v1/operational-logs?level=WARN&limit=100`
-- `GET /api/v1/operational-logs?companyId={uuid}`
-- `GET /api/v1/operational-logs?documentId={uuid}`
-- `GET /api/v1/operational-logs/requests/{requestId}`
-
-## Autenticacao e autorizacao
-
-Em producao, a API exige duas credenciais em cada chamada protegida:
-
-```http
-X-API-Key: chave-forte-da-integracao
-Authorization: Bearer <jwt-curto-emitido-pela-bivaro>
+```text
+Sistema integrador
+  -> Fiscal API
+    -> Empresa emissora cadastrada
+      -> Certificado A1 da empresa
+      -> Rota SEFAZ da UF da empresa
+        -> Autorização fiscal
 ```
 
-A `X-API-Key` identifica a integracao. O JWT autoriza a acao, o tenant, o lojista e os escopos permitidos.
+A empresa emissora é sempre a empresa cadastrada na API. A UF do comprador não define a rota de emissão. A rota fiscal é definida por `stateCode`, ou seja, pela UF da empresa emitente.
 
-Claims esperadas no JWT:
+## Pré-Requisitos
+
+- Java 21.
+- Maven 3.9+.
+- Docker e Docker Compose para execução com PostgreSQL.
+- PostgreSQL em produção.
+- Certificado A1 válido para emissão real.
+- Credenciamento fiscal da empresa emitente na SEFAZ da respectiva UF.
+- CSC/token configurado quando houver emissão de NFC-e.
+
+## Instalação Local
+
+Clone o repositório:
+
+```powershell
+git clone https://github.com/SYNKOD3/API-Fiscal.git
+cd API-Fiscal
+```
+
+Execute os testes:
+
+```powershell
+mvn test
+```
+
+Suba a aplicação em modo local:
+
+```powershell
+mvn spring-boot:run
+```
+
+Por padrão, a API local usa:
+
+```text
+URL: http://localhost:8081
+Banco: H2 em memória
+Provider fiscal: STUB
+API key: change-me
+JWT: desativado
+Swagger: habilitado
+Console dev: habilitado
+```
+
+Swagger:
+
+```text
+http://localhost:8081/swagger-ui/index.html
+```
+
+Console dev:
+
+```text
+http://localhost:8081/dev/index.html
+```
+
+## Configuração de Produção
+
+Crie o arquivo `.env` a partir do modelo:
+
+```powershell
+Copy-Item env.production.example .env
+```
+
+Configure os valores reais no `.env`:
+
+```env
+POSTGRES_PASSWORD=senha-forte-do-postgres
+APP_API_KEY=chave-forte-da-api
+APP_SECRETS_KEY=chave-fixa-com-pelo-menos-32-caracteres
+JWT_AUTH_ENABLED=true
+JWT_SECRET=chave-jwt-com-pelo-menos-32-caracteres
+JWT_ISSUER=fiscal-platform
+JWT_AUDIENCE=fiscal-api
+FISCAL_PROVIDER=LIBRARY
+CERTIFICATE_STORAGE_PATH=/var/lib/fiscal-api/certificates
+APP_DEV_CONSOLE_ENABLED=false
+OPENAPI_ENABLED=false
+OPENAPI_PUBLIC_ACCESS=false
+```
+
+Suba com Docker:
+
+```powershell
+docker compose --env-file .env up -d --build
+```
+
+Verifique o status:
+
+```powershell
+docker compose ps
+```
+
+Healthcheck:
+
+```powershell
+Invoke-WebRequest http://localhost:8081/actuator/health
+```
+
+## Variáveis de Ambiente
+
+| Variável | Obrigatória em produção | Descrição |
+| --- | --- | --- |
+| `SERVER_PORT` | Não | Porta HTTP da API. Padrão: `8081`. |
+| `DATABASE_URL` | Sim | URL JDBC do PostgreSQL. |
+| `DATABASE_USERNAME` | Sim | Usuário do PostgreSQL. |
+| `DATABASE_PASSWORD` | Sim | Senha do PostgreSQL. |
+| `APP_API_KEY` | Sim | Chave exigida no header `X-API-Key`. |
+| `APP_SECRETS_KEY` | Sim | Chave fixa usada para criptografar segredos. Não alterar após cadastrar certificados. |
+| `JWT_AUTH_ENABLED` | Sim | Ativa autenticação JWT. Em produção deve ser `true`. |
+| `JWT_SECRET` | Sim | Chave usada para validar JWT HS256. |
+| `JWT_ISSUER` | Sim | Emissor esperado no claim `iss`. |
+| `JWT_AUDIENCE` | Sim | Audiência esperada no claim `aud`. |
+| `FISCAL_PROVIDER` | Sim | `STUB` para simulação ou `LIBRARY` para integração fiscal real. |
+| `FISCAL_UNAVAILABLE_STATES` | Não | Lista de UFs simuladas como indisponíveis, exemplo: `BA,SP`. |
+| `CERTIFICATE_STORAGE_PATH` | Sim | Diretório privado e persistente para certificados A1. |
+| `CERTIFICATE_MAX_SIZE_BYTES` | Não | Tamanho máximo do certificado enviado. |
+| `APP_DEV_CONSOLE_ENABLED` | Sim | Deve ser `false` em produção. |
+| `OPENAPI_ENABLED` | Sim | Deve ser `false` em produção, salvo necessidade controlada. |
+| `OPENAPI_PUBLIC_ACCESS` | Sim | Deve ser `false` em produção. |
+
+## Autenticação
+
+Em produção, cada chamada protegida deve enviar:
+
+```http
+X-API-Key: chave-forte-da-api
+Authorization: Bearer <jwt>
+```
+
+A API key identifica a integração. O JWT autoriza a ação, os escopos e o vínculo com `tenantId` e `merchantId`.
+
+Exemplo de payload JWT:
 
 ```json
 {
-  "iss": "bivaro",
+  "iss": "fiscal-platform",
   "aud": "fiscal-api",
-  "sub": "bivaro-backend",
+  "sub": "integrator-backend",
   "jti": "uuid-unico-do-token",
-  "bivaroTenantId": "tenant-001",
-  "bivaroMerchantId": "merchant-001",
+  "tenantId": "tenant-001",
+  "merchantId": "merchant-001",
   "scopes": [
     "fiscal:documents:issue",
     "fiscal:documents:read",
@@ -83,16 +180,16 @@ Claims esperadas no JWT:
 }
 ```
 
-Regras aplicadas:
+Regras:
 
-- JWT e validado com `HS256` e `JWT_SECRET`.
-- `iss` precisa bater com `JWT_ISSUER`.
-- `aud` precisa bater com `JWT_AUDIENCE`.
-- `exp` e obrigatorio e precisa estar no futuro.
-- Se o token tiver `bivaroTenantId` ou `bivaroMerchantId`, a API impede acesso a outra empresa/lojista.
+- O algoritmo aceito é `HS256`.
+- `iss` deve bater com `JWT_ISSUER`.
+- `aud` deve bater com `JWT_AUDIENCE`.
+- `exp` é obrigatório e deve estar no futuro.
+- Tokens com `tenantId` ou `merchantId` ficam restritos ao respectivo lojista.
 - O escopo `fiscal:admin` libera todos os endpoints protegidos.
 
-Escopos principais:
+Escopos disponíveis:
 
 ```text
 fiscal:companies:write       POST /api/v1/companies
@@ -107,34 +204,38 @@ fiscal:logs:read             GET /api/v1/operational-logs...
 fiscal:sefaz:read            GET /api/v1/sefaz...
 ```
 
-No perfil local/dev, `JWT_AUTH_ENABLED=false` por padrao para facilitar uso do console interno. No perfil `prod`, `JWT_AUTH_ENABLED=true` por padrao e a aplicacao nao sobe sem `JWT_SECRET` forte.
+## Fluxo de Uso
 
-## Bivaro como SaaS fiscal
+1. Cadastrar a empresa emissora.
+2. Enviar o certificado A1 da empresa.
+3. Validar a rota fiscal da empresa.
+4. Emitir NF-e ou NFC-e.
+5. Consultar XML, comprovante ou impressão.
+6. Acompanhar logs e auditoria.
+7. Reprocessar documentos pendentes quando necessário.
 
-O Bivaro e a plataforma intermediadora. A empresa emitente da NF-e/NFC-e e sempre o lojista cadastrado, com seu proprio CNPJ, UF, inscricao estadual, certificado, CSC, serie e numeracao.
+## Cadastro de Empresa
 
-Exemplo:
-
-```text
-Bivaro -> API Fiscal -> Lojista BA -> SEFAZ/autorizador da BA
-Bivaro -> API Fiscal -> Lojista SP -> SEFAZ/autorizador de SP
-Bivaro -> API Fiscal -> Lojista MG -> SEFAZ/autorizador de MG
-```
-
-A UF do comprador nao define a SEFAZ de emissao. A rota fiscal vem de `Company.stateCode`, ou seja, da UF do lojista emitente.
-
-## Exemplo de cadastro de empresa
+Endpoint:
 
 ```http
 POST /api/v1/companies
-X-API-Key: sua-chave-forte
-Authorization: Bearer jwt-curto-da-bivaro
-Content-Type: application/json
+```
 
+Exemplo:
+
+```http
+POST /api/v1/companies
+X-API-Key: chave-forte-da-api
+Authorization: Bearer jwt-da-integracao
+Content-Type: application/json
+```
+
+```json
 {
-  "bivaroTenantId": "bivaro-prod",
-  "bivaroMerchantId": "lojista-1001",
-  "callbackUrl": "https://bivaro.com.br/webhooks/fiscal",
+  "tenantId": "tenant-prod",
+  "merchantId": "lojista-1001",
+  "callbackUrl": "https://integrador.example.com/webhooks/fiscal",
   "legalName": "Empresa Exemplo LTDA",
   "taxId": "12345678000199",
   "stateRegistration": "123456789",
@@ -150,8 +251,8 @@ Content-Type: application/json
   "phone": "7133334444",
   "taxRegime": "SIMPLES_NACIONAL",
   "fiscalEnvironment": "HOMOLOGATION",
-  "certificatePath": "C:/certificados/empresa.pfx",
-  "certificatePassword": "senha-do-certificado",
+  "certificatePath": null,
+  "certificatePassword": null,
   "cscId": "000001",
   "cscToken": "token-csc",
   "nfeSeriesNumber": 1,
@@ -161,27 +262,33 @@ Content-Type: application/json
 }
 ```
 
-## Upload de certificado A1
+Campos importantes:
 
-Para o fluxo SaaS da Bivaro, o certificado nao deve ficar solto nem ser escolhido manualmente na emissao. Ele e sempre vinculado a uma empresa emissora.
+- `tenantId`: identificador do tenant na plataforma integradora.
+- `merchantId`: identificador do lojista na plataforma integradora.
+- `taxId`: CNPJ da empresa emissora, somente números.
+- `stateRegistration`: inscrição estadual da empresa emissora.
+- `stateCode`: UF da empresa emissora.
+- `fiscalEnvironment`: `HOMOLOGATION` ou `PRODUCTION`.
+- `nfeSeriesNumber` e `nextNfeNumber`: série e próxima numeração para NF-e.
+- `nfceSeriesNumber` e `nextNfceNumber`: série e próxima numeração para NFC-e.
 
-Fluxo recomendado:
+## Upload de Certificado A1
 
-```text
-Cliente sobe o A1 na Bivaro
-Bivaro envia .pfx/.p12 + senha para a API Fiscal
-API valida o arquivo e a senha
-API salva o arquivo em storage privado
-API salva a senha criptografada no banco
-API marca esse certificado como ACTIVE para a empresa
-```
+O certificado A1 é vinculado à empresa emissora. Cada empresa pode ter um certificado ativo.
 
 Endpoint:
 
 ```http
 POST /api/v1/companies/{companyId}/certificates
-X-API-Key: sua-chave-forte
-Authorization: Bearer jwt-curto-da-bivaro
+```
+
+Exemplo:
+
+```http
+POST /api/v1/companies/{companyId}/certificates
+X-API-Key: chave-forte-da-api
+Authorization: Bearer jwt-da-integracao
 Content-Type: multipart/form-data
 
 file=@empresa.pfx
@@ -204,18 +311,33 @@ Resposta:
 }
 ```
 
-Ao enviar um novo certificado para a mesma empresa, a API marca o anterior como `REPLACED` e ativa o novo. A emissao sempre usa o certificado `ACTIVE` da empresa localizada por `companyId` ou por `bivaroTenantId + bivaroMerchantId`.
+Comportamento:
 
-A API tenta extrair o CNPJ do certificado e bloqueia o upload quando o CNPJ extraido nao confere com o CNPJ da empresa. Alguns certificados podem nao expor o CNPJ em formato textual simples; nesses casos, a senha/validade ainda sao validadas e o upload e aceito sem `certificateTaxId`.
+- A API valida se o arquivo é um PKCS#12 válido.
+- A API valida a senha do certificado.
+- A API tenta extrair o CNPJ do certificado.
+- Se o CNPJ extraído for diferente do CNPJ da empresa, o upload é recusado.
+- Se não for possível extrair o CNPJ em formato textual, o upload pode ser aceito após validar senha e validade.
+- Ao enviar um novo certificado, o certificado anterior é marcado como `REPLACED`.
 
-## Exemplo de emissao
+## Emissão de Documento Fiscal
+
+Endpoint:
 
 ```http
 POST /api/v1/documents
-X-API-Key: sua-chave-forte
-Authorization: Bearer jwt-curto-da-bivaro
-Content-Type: application/json
+```
 
+Exemplo usando `companyId`:
+
+```http
+POST /api/v1/documents
+X-API-Key: chave-forte-da-api
+Authorization: Bearer jwt-da-integracao
+Content-Type: application/json
+```
+
+```json
 {
   "companyId": "UUID_DA_EMPRESA",
   "model": "NFCE",
@@ -244,14 +366,12 @@ Content-Type: application/json
 }
 ```
 
-O `totalAmount` do documento precisa bater com a soma de `items[].totalAmount`.
-
-Tambem e possivel emitir sem expor o UUID interno da empresa, usando os identificadores do Bivaro:
+Exemplo usando `tenantId` e `merchantId`:
 
 ```json
 {
-  "bivaroTenantId": "bivaro-prod",
-  "bivaroMerchantId": "lojista-1001",
+  "tenantId": "tenant-prod",
+  "merchantId": "lojista-1001",
   "model": "NFCE",
   "externalReference": "PEDIDO-1001",
   "customerName": "Cliente Teste",
@@ -278,178 +398,236 @@ Tambem e possivel emitir sem expor o UUID interno da empresa, usando os identifi
 }
 ```
 
-## Como plugar a biblioteca fiscal real
+O campo `totalAmount` deve bater com a soma de `items[].totalAmount`.
 
-Hoje a aplicacao sobe com `app.fiscal.provider=STUB` para validar o fluxo de negocio.
-A dependencia da Java-NFe ja esta declarada no Maven:
+## Consulta de Documentos
 
-```xml
-<dependency>
-  <groupId>br.com.swconsultoria</groupId>
-  <artifactId>java-nfe</artifactId>
-  <version>4.1.1</version>
-</dependency>
+Listar documentos por empresa:
+
+```http
+GET /api/v1/documents?companyId={uuid}
+X-API-Key: chave-forte-da-api
+Authorization: Bearer jwt-da-integracao
 ```
 
-Para integrar a biblioteca existente:
+Consultar um documento:
 
-1. Ajuste `app.fiscal.provider=LIBRARY`.
-2. Use `JavaNfeMapper` para converter `FiscalXmlDraft` para `TEnviNFe`/`TNFe` da Java-NFe.
-3. Monte `ConfiguracoesNfe` com UF, ambiente, certificado e CSC da empresa.
-4. Chame `Nfe.montaNfe(config, enviNFe, true)` para assinar/validar.
-5. Chame `Nfe.enviarNfe(config, enviNFeAssinado, DocumentoEnum.NFE/NFCE)`.
-6. Se o provedor gerar XML, DANFE, NFC-e ou PDF, persista esses artefatos no documento e publique-os para download.
+```http
+GET /api/v1/documents/{id}
+```
 
-## Rascunho XML
+Baixar XML:
 
-A aplicacao possui uma camada intermediaria antes da Java-NFe:
+```http
+GET /api/v1/documents/{id}/xml
+```
 
-- `FiscalXmlBuilder`: normaliza o payload interno e separa NF-e modelo 55 de NFC-e modelo 65.
-- `FiscalIssuerDraft`: concentra os dados fiscais do emitente, incluindo CNPJ, IE, endereco, municipio IBGE e regime tributario.
-- `FiscalXmlDraft`: representa o documento fiscal pronto para virar JAXB.
-- `JavaNfeMapper`: converte o rascunho fiscal para `TEnviNFe`/`TNFe`, os objetos usados pela Java-NFe.
-- `FiscalXmlPreviewRenderer`: gera uma pre-visualizacao XML para auditoria e testes.
+Baixar comprovante textual:
 
-Essa camada evita que detalhes da biblioteca fiscal vazem para controllers, servicos de contingencia ou API publica.
+```http
+GET /api/v1/documents/{id}/receipt
+```
 
-## Modelos fiscais
+Visualizar impressão HTML:
 
-- `NFCE`: cupom fiscal de venda ao consumidor final, modelo 65.
-- `NFE`: nota fiscal eletronica completa de mercadoria, modelo 55.
+```http
+GET /api/v1/documents/{id}/print
+```
 
-O campo `model` em `POST /api/v1/documents` define qual caminho fiscal sera usado.
+Reprocessar documento:
 
-## Roteamento SEFAZ nacional
+```http
+POST /api/v1/documents/{id}/retry
+```
 
-A classe `SefazRouter` centraliza a decisao de rota por UF. A API usa a UF da empresa emitente para montar `ConfiguracoesNfe` na Java-NFe.
+## Contingência e Retry
 
-Endpoints uteis:
+Quando o provedor fiscal fica indisponível, a API:
 
-- `GET /api/v1/sefaz/states`: lista as UFs habilitadas na API.
-- `GET /api/v1/sefaz/companies/{companyId}/route?model=NFCE`: mostra a rota de uma empresa.
-- `GET /api/v1/sefaz/bivaro-route?bivaroTenantId=...&bivaroMerchantId=...&model=NFCE`: mostra a rota pelo identificador do Bivaro.
+- Salva o documento fiscal.
+- Gera XML local.
+- Gera comprovante local.
+- Marca o documento como `CONTINGENCY_PENDING`.
+- Agenda nova tentativa de envio.
 
-Para simular queda localizada de SEFAZ por UF:
+O retry em background usa:
+
+```env
+FISCAL_RETRY_DELAY_MS=30000
+FISCAL_RETRY_BATCH_SIZE=50
+```
+
+Para simular indisponibilidade de UFs em ambiente de teste:
 
 ```env
 FISCAL_UNAVAILABLE_STATES=BA,SP
 ```
 
-Nesse caso, apenas empresas emitentes dessas UFs entram em contingencia; lojistas de outras UFs continuam emitindo.
+## Roteamento SEFAZ
 
-## Numeracao fiscal
+Listar UFs suportadas:
 
-A numeracao e separada por empresa e por modelo fiscal. Ao emitir um documento, a aplicacao bloqueia a empresa em transacao (`for update`), aloca a serie/numero correto e incrementa o proximo numero antes de salvar o documento. Se a transacao falhar, a numeracao volta junto com o rollback.
-
-Tambem existe uma restricao unica para evitar duas emissoes com a mesma `externalReference` na mesma empresa.
-
-## Persistencia de producao
-
-O projeto sobe com H2 para testes locais. Em producao, use o perfil `prod`: ele exige PostgreSQL, API key forte, chave fixa de criptografia, provider fiscal real e bloqueia console dev/Swagger por padrao.
-
-Crie um arquivo `.env` a partir do modelo:
-
-```powershell
-Copy-Item env.production.example .env
+```http
+GET /api/v1/sefaz/states
 ```
 
-Edite o `.env` com valores reais. Os campos obrigatorios sao:
+Consultar rota por empresa:
 
-- `POSTGRES_PASSWORD`: senha forte do banco.
-- `APP_API_KEY`: chave forte usada pelo seu sistema no header `X-API-Key`.
-- `APP_SECRETS_KEY`: chave fixa com pelo menos 32 caracteres para criptografar senha do certificado e CSC.
-- `JWT_SECRET`: chave forte com pelo menos 32 caracteres para validar os JWTs emitidos pela Bivaro.
-- `JWT_ISSUER` e `JWT_AUDIENCE`: emissor e audiencia esperados no JWT.
-- `FISCAL_PROVIDER=LIBRARY`: usa a camada da biblioteca fiscal real.
-- `CERTIFICATE_STORAGE_PATH`: pasta/volume privado e persistente para armazenar os arquivos `.pfx/.p12`.
-
-Para subir a aplicacao em modo producao com Docker:
-
-```powershell
-docker compose --env-file .env up -d --build
+```http
+GET /api/v1/sefaz/companies/{companyId}/route?model=NFCE
 ```
 
-## Teste de tempo de resposta
+Consultar rota por identificadores externos:
 
-Existe um benchmark leve, desligado por padrao, para medir os endpoints principais sem depender de servidor externo. Ele usa MockMvc, H2 em memoria e `FISCAL_PROVIDER=STUB`, entao serve para medir overhead da API, controllers, filtros, banco local e serializacao. Nao mede latencia real da SEFAZ.
+```http
+GET /api/v1/sefaz/merchant-route?tenantId={tenant}&merchantId={merchant}&model=NFCE
+```
 
-Para rodar:
+A API utiliza a Java-NFe para configuração fiscal por UF quando `FISCAL_PROVIDER=LIBRARY`.
+
+## Auditoria
+
+Eventos fiscais são salvos em `fiscal_audit_events`.
+
+Consultar eventos por empresa:
+
+```http
+GET /api/v1/audit/companies/{companyId}
+```
+
+Consultar eventos por documento:
+
+```http
+GET /api/v1/audit/documents/{documentId}
+```
+
+Eventos comuns:
+
+- `COMPANY_CREATED`
+- `DOCUMENT_RECEIVED`
+- `ACCESS_KEY_CREATED`
+- `DOCUMENT_AUTHORIZED`
+- `DOCUMENT_CONTINGENCY`
+- `DOCUMENT_REJECTED`
+
+## Logs Operacionais
+
+Toda requisição em `/api/**` recebe um `X-Request-Id`. Se o header já for enviado pelo cliente HTTP, a API preserva o valor. Caso contrário, gera um UUID automaticamente.
+
+Consultar logs:
+
+```http
+GET /api/v1/operational-logs?level=WARN&limit=100
+X-API-Key: chave-forte-da-api
+Authorization: Bearer jwt-da-integracao
+```
+
+Consultar log por request id:
+
+```http
+GET /api/v1/operational-logs/requests/{requestId}
+X-API-Key: chave-forte-da-api
+Authorization: Bearer jwt-da-integracao
+```
+
+Os logs registram:
+
+- `requestId`.
+- Método HTTP.
+- Path.
+- Status HTTP.
+- Duração.
+- Empresa e documento relacionados, quando houver.
+- Código e mensagem de erro tratada.
+
+Dados sensíveis não são gravados nos logs operacionais.
+
+## Teste de Tempo de Resposta
+
+O benchmark de performance é opcional e fica desativado por padrão.
+
+Executar benchmark:
 
 ```powershell
 mvn -DperformanceTests=true -Dtest=PerformanceSmokeTests test
 ```
 
-Para controlar o volume de chamadas:
+Controlar volume de chamadas:
 
 ```powershell
 mvn -DperformanceTests=true -DperformanceReadRuns=100 -DperformanceWriteRuns=30 -Dtest=PerformanceSmokeTests test
 ```
 
-O resultado mostra `Min`, `Avg`, `P50`, `P95`, `P99` e `Max` em milissegundos para healthcheck, listagem de empresas, listagem de documentos e emissao simulada.
+O resultado mostra `Min`, `Avg`, `P50`, `P95`, `P99` e `Max` em milissegundos.
 
-Para rodar sem Docker, configure:
+Esse benchmark usa MockMvc, H2 em memória e `FISCAL_PROVIDER=STUB`. Ele mede o overhead interno da API, mas não mede latência real da SEFAZ.
+
+## Build
+
+Gerar o `.jar`:
 
 ```powershell
-$env:SPRING_PROFILES_ACTIVE="prod"
-$env:DATABASE_URL="jdbc:postgresql://localhost:5432/fiscal_api"
-$env:DATABASE_USERNAME="fiscal_api"
-$env:DATABASE_PASSWORD="senha-forte-do-banco"
-$env:APP_API_KEY="chave-forte-com-mais-de-24-caracteres"
-$env:APP_SECRETS_KEY="chave-fixa-com-mais-de-32-caracteres"
-$env:JWT_AUTH_ENABLED="true"
-$env:JWT_SECRET="chave-jwt-com-mais-de-32-caracteres"
-$env:JWT_ISSUER="bivaro"
-$env:JWT_AUDIENCE="fiscal-api"
-$env:FISCAL_PROVIDER="LIBRARY"
-$env:CERTIFICATE_STORAGE_PATH="C:/fiscal-api/certificates"
-$env:APP_DEV_CONSOLE_ENABLED="false"
-$env:OPENAPI_ENABLED="false"
-$env:OPENAPI_PUBLIC_ACCESS="false"
+mvn package -DskipTests
+```
+
+Executar o `.jar`:
+
+```powershell
 java -jar target/fiscal-api-0.0.1-SNAPSHOT.jar
 ```
 
-Travas aplicadas no perfil `prod`:
+## Endpoints Principais
 
-- A aplicacao nao sobe se `APP_API_KEY` estiver ausente, curta ou `change-me`.
-- A aplicacao nao sobe se JWT estiver desligado ou `JWT_SECRET` estiver ausente/fraco.
-- A aplicacao nao sobe se `APP_SECRETS_KEY` estiver ausente, curta ou com valor dev.
-- A aplicacao nao sobe se `FISCAL_PROVIDER` nao for `LIBRARY`.
-- A aplicacao nao sobe se `/dev` ou Swagger publico estiverem ligados.
-- A aplicacao nao sobe se o datasource nao for PostgreSQL.
-- A aplicacao nao sobe se `CERTIFICATE_STORAGE_PATH` nao apontar para um storage privado/persistente.
+| Método | Endpoint | Descrição |
+| --- | --- | --- |
+| `POST` | `/api/v1/companies` | Cadastra empresa emissora. |
+| `GET` | `/api/v1/companies` | Lista empresas. |
+| `POST` | `/api/v1/companies/{companyId}/certificates` | Envia certificado A1. |
+| `GET` | `/api/v1/companies/{companyId}/certificates` | Lista certificados da empresa. |
+| `POST` | `/api/v1/documents` | Emite NF-e ou NFC-e. |
+| `GET` | `/api/v1/documents/{id}` | Consulta documento. |
+| `GET` | `/api/v1/documents?companyId={uuid}` | Lista documentos da empresa. |
+| `POST` | `/api/v1/documents/{id}/retry` | Reprocessa documento. |
+| `GET` | `/api/v1/documents/{id}/receipt` | Retorna comprovante textual. |
+| `GET` | `/api/v1/documents/{id}/xml` | Retorna XML fiscal. |
+| `GET` | `/api/v1/documents/{id}/print` | Retorna visualização HTML imprimível. |
+| `GET` | `/api/v1/sefaz/states` | Lista UFs suportadas. |
+| `GET` | `/api/v1/sefaz/companies/{companyId}/route` | Consulta rota SEFAZ da empresa. |
+| `GET` | `/api/v1/sefaz/merchant-route` | Consulta rota por `tenantId` e `merchantId`. |
+| `GET` | `/api/v1/audit/companies/{companyId}` | Lista auditoria da empresa. |
+| `GET` | `/api/v1/audit/documents/{documentId}` | Lista auditoria do documento. |
+| `GET` | `/api/v1/operational-logs` | Lista logs operacionais. |
+| `GET` | `/api/v1/operational-logs/requests/{requestId}` | Consulta log por request id. |
 
-Nunca altere `APP_SECRETS_KEY` depois de cadastrar certificados/CSC sem processo de recriptografia dos segredos ja gravados.
+## Estado da Integração Fiscal
 
-## Auditoria e artefatos
+O projeto possui dois modos de provedor fiscal:
 
-A aplicacao registra eventos fiscais em `fiscal_audit_events`, incluindo cadastro de empresa, recebimento de documento, geracao de chave, autorizacao, contingencia e rejeicao.
+- `STUB`: modo simulado para desenvolvimento e testes locais.
+- `LIBRARY`: modo de integração com a biblioteca fiscal Java-NFe.
 
-Artefatos disponiveis:
+Para emissão real, cada empresa emissora precisa estar apta na SEFAZ:
 
-- XML fiscal local/autorizado em `/api/v1/documents/{id}/xml`.
-- Comprovante textual em `/api/v1/documents/{id}/receipt`.
-- Visualizacao HTML imprimivel em `/api/v1/documents/{id}/print`.
-- Eventos de auditoria por empresa/documento nos endpoints `/api/v1/audit/...`.
+- CNPJ ativo.
+- Inscrição estadual ativa quando exigida.
+- Certificado A1 válido.
+- CSC/token configurado para NFC-e, quando aplicável.
+- Credenciamento no ambiente de homologação ou produção da UF.
+- Dados fiscais corretos no payload de emissão.
 
-## Logs operacionais
+## Segurança
 
-Toda requisicao em `/api/**` recebe um header `X-Request-Id`. Se o cliente enviar esse header, a API preserva o valor; caso contrario, gera um UUID automaticamente.
+Recomendações para produção:
 
-Os logs operacionais ficam em `operational_logs` e registram:
+- Usar HTTPS obrigatório na borda.
+- Manter Swagger e console dev desabilitados.
+- Não versionar `.env`, certificados, dumps ou logs sensíveis.
+- Usar volume privado para certificados.
+- Usar `APP_SECRETS_KEY` forte e estável.
+- Rotacionar `APP_API_KEY` e `JWT_SECRET` com procedimento controlado.
+- Emitir JWTs curtos.
+- Registrar e monitorar erros por `X-Request-Id`.
 
-- `requestId`, metodo, path, status HTTP e duracao.
-- Nivel `INFO`, `WARN` ou `ERROR`.
-- Empresa, documento e referencia externa quando a chamada estiver vinculada a uma emissao.
-- Codigo/mensagem de erro tratada, sem gravar API key, CSC, senha de certificado ou payload fiscal bruto.
+## Licença
 
-Consultas uteis:
-
-```http
-GET /api/v1/operational-logs?level=WARN&limit=100
-X-API-Key: sua-chave-forte
-```
-
-```http
-GET /api/v1/operational-logs/requests/{requestId}
-X-API-Key: sua-chave-forte
-```
+Este projeto utiliza dependências de terceiros conforme suas respectivas licenças.

@@ -60,9 +60,9 @@ class FiscalApiApplicationTests {
     @Test
     void allocatesIndependentNumberSequencesByDocumentModel() {
         var company = companyService.create(new CreateCompanyRequest(
-            "bivaro-test",
+            "tenant-test",
             "merchant-ba",
-            "https://bivaro.example/webhooks/fiscal",
+            "https://integrator.example/webhooks/fiscal",
             "Empresa Fiscal Teste LTDA",
             "12345678000199",
             "123456789",
@@ -139,20 +139,20 @@ class FiscalApiApplicationTests {
         assertThat(fiscalAuditService.listByDocument(firstNfce.id()).stream().map(FiscalAuditEventResponse::eventType))
             .contains("DOCUMENT_RECEIVED", "ACCESS_KEY_CREATED", "DOCUMENT_AUTHORIZED");
 
-        var bivaroIssued = fiscalDocumentService.issue(new IssueDocumentRequest(
+        var merchantIssued = fiscalDocumentService.issue(new IssueDocumentRequest(
             null,
-            "bivaro-test",
+            "tenant-test",
             "merchant-ba",
             DocumentModel.NFCE,
-            "PEDIDO-BIVARO-1",
-            "Cliente Bivaro",
+            "PEDIDO-INTEGRADOR-1",
+            "Cliente Integrador",
             BigDecimal.valueOf(50),
             List.of(item("D", "Produto D", BigDecimal.valueOf(50)))
         ));
-        assertThat(bivaroIssued.companyId()).isEqualTo(company.id());
-        assertThat(bivaroIssued.invoiceNumber()).isEqualTo(202);
+        assertThat(merchantIssued.companyId()).isEqualTo(company.id());
+        assertThat(merchantIssued.invoiceNumber()).isEqualTo(202);
 
-        var route = sefazRouter.route(companyService.getByBivaroMerchant("bivaro-test", "merchant-ba"), DocumentModel.NFCE);
+        var route = sefazRouter.route(companyService.getByMerchant("tenant-test", "merchant-ba"), DocumentModel.NFCE);
         assertThat(route.stateCode()).isEqualTo("BA");
         assertThat(route.authorizerStrategy()).isEqualTo("JAVA_NFE_BY_EMITTER_UF");
         assertThat(route.available()).isTrue();
@@ -186,10 +186,10 @@ class FiscalApiApplicationTests {
     }
 
     @Test
-    void validatesBivaroJwtClaimsAndScopes() throws Exception {
+    void validatesIntegratorJwtClaimsAndScopes() throws Exception {
         AppProperties properties = new AppProperties();
         properties.getSecurity().getJwt().setSecret("jwt-secret-for-tests-with-more-than-32-characters");
-        properties.getSecurity().getJwt().setIssuer("bivaro");
+        properties.getSecurity().getJwt().setIssuer("fiscal-platform");
         properties.getSecurity().getJwt().setAudience("fiscal-api");
 
         ObjectMapper mapper = new ObjectMapper();
@@ -199,12 +199,12 @@ class FiscalApiApplicationTests {
             properties.getSecurity().getJwt().getSecret(),
             """
                 {
-                  "iss": "bivaro",
+                  "iss": "fiscal-platform",
                   "aud": "fiscal-api",
-                  "sub": "bivaro-backend",
+                  "sub": "integrator-backend",
                   "jti": "jwt-test-001",
-                  "bivaroTenantId": "tenant-001",
-                  "bivaroMerchantId": "merchant-001",
+                  "tenantId": "tenant-001",
+                  "merchantId": "merchant-001",
                   "scopes": ["fiscal:documents:issue", "fiscal:certificates:write"],
                   "exp": %d
                 }
@@ -213,9 +213,9 @@ class FiscalApiApplicationTests {
 
         var principal = tokenService.validate(token);
 
-        assertThat(principal.subject()).isEqualTo("bivaro-backend");
-        assertThat(principal.bivaroTenantId()).isEqualTo("tenant-001");
-        assertThat(principal.bivaroMerchantId()).isEqualTo("merchant-001");
+        assertThat(principal.subject()).isEqualTo("integrator-backend");
+        assertThat(principal.tenantId()).isEqualTo("tenant-001");
+        assertThat(principal.merchantId()).isEqualTo("merchant-001");
         assertThat(principal.hasScope("fiscal:documents:issue")).isTrue();
         assertThat(principal.hasScope("fiscal:logs:read")).isFalse();
     }

@@ -323,15 +323,15 @@ public class FiscalDocumentService {
             return fiscalNumberAllocator.allocate(request.companyId(), request.model());
         }
 
-        if (hasText(request.bivaroTenantId()) && hasText(request.bivaroMerchantId())) {
-            return fiscalNumberAllocator.allocateByBivaroMerchant(
-                request.bivaroTenantId(),
-                request.bivaroMerchantId(),
+        if (hasText(request.tenantId()) && hasText(request.merchantId())) {
+            return fiscalNumberAllocator.allocateByMerchant(
+                request.tenantId(),
+                request.merchantId(),
                 request.model()
             );
         }
 
-        throw new BadRequestException("Informe companyId ou bivaroTenantId + bivaroMerchantId para emitir.");
+        throw new BadRequestException("Informe companyId ou tenantId + merchantId para emitir.");
     }
 
     private boolean hasText(String value) {

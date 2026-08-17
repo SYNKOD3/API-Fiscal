@@ -19,10 +19,10 @@ public class Company {
     private UUID id;
 
     @Column(length = 80)
-    private String bivaroTenantId;
+    private String tenantId;
 
     @Column(length = 80)
-    private String bivaroMerchantId;
+    private String merchantId;
 
     private String callbackUrl;
 
@@ -104,8 +104,8 @@ public class Company {
     private OffsetDateTime updatedAt;
 
     public static Company create(String legalName,
-                                 String bivaroTenantId,
-                                 String bivaroMerchantId,
+                                 String tenantId,
+                                 String merchantId,
                                  String callbackUrl,
                                  String taxId,
                                  String stateRegistration,
@@ -131,8 +131,8 @@ public class Company {
                                  Long nextNfceNumber) {
         Company company = new Company();
         company.id = UUID.randomUUID();
-        company.bivaroTenantId = bivaroTenantId;
-        company.bivaroMerchantId = bivaroMerchantId;
+        company.tenantId = tenantId;
+        company.merchantId = merchantId;
         company.callbackUrl = callbackUrl;
         company.legalName = legalName;
         company.taxId = taxId;
@@ -171,12 +171,12 @@ public class Company {
         return legalName;
     }
 
-    public String getBivaroTenantId() {
-        return bivaroTenantId;
+    public String getTenantId() {
+        return tenantId;
     }
 
-    public String getBivaroMerchantId() {
-        return bivaroMerchantId;
+    public String getMerchantId() {
+        return merchantId;
     }
 
     public String getCallbackUrl() {

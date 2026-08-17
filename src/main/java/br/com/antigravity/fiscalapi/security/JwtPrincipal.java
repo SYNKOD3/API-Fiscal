@@ -8,8 +8,8 @@ public record JwtPrincipal(
     String issuer,
     String audience,
     String jwtId,
-    String bivaroTenantId,
-    String bivaroMerchantId,
+    String tenantId,
+    String merchantId,
     Set<String> scopes,
     Instant expiresAt
 ) {

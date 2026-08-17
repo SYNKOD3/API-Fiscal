@@ -32,8 +32,8 @@ public class SefazRouter {
 
         return new SefazRouteResponse(
             company.getId(),
-            company.getBivaroTenantId(),
-            company.getBivaroMerchantId(),
+            company.getTenantId(),
+            company.getMerchantId(),
             company.getTaxId(),
             stateCode,
             model,

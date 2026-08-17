@@ -134,9 +134,9 @@ class PerformanceSmokeTests {
         String suffix = Long.toString(System.nanoTime());
         String taxId = ("123456" + suffix).substring(0, 14);
         return new CreateCompanyRequest(
-            "bivaro-perf",
+            "tenant-perf",
             "merchant-" + suffix,
-            "https://bivaro.example/webhooks/fiscal",
+            "https://integrator.example/webhooks/fiscal",
             "Empresa Performance LTDA",
             taxId,
             "123456789",

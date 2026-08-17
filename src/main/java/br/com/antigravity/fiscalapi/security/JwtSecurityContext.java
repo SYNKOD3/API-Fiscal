@@ -18,16 +18,16 @@ public class JwtSecurityContext {
         return Optional.empty();
     }
 
-    public void requireBivaroAccess(String bivaroTenantId, String bivaroMerchantId) {
+    public void requireTenantAccess(String tenantId, String merchantId) {
         current().ifPresent(principal -> {
             if (principal.scopes().contains("fiscal:admin")) {
                 return;
             }
-            if (hasText(principal.bivaroTenantId()) && !principal.bivaroTenantId().equals(bivaroTenantId)) {
-                throw new ForbiddenException("JWT nao permite acesso ao tenant Bivaro informado");
+            if (hasText(principal.tenantId()) && !principal.tenantId().equals(tenantId)) {
+                throw new ForbiddenException("JWT não permite acesso ao tenant informado");
             }
-            if (hasText(principal.bivaroMerchantId()) && !principal.bivaroMerchantId().equals(bivaroMerchantId)) {
-                throw new ForbiddenException("JWT nao permite acesso ao lojista Bivaro informado");
+            if (hasText(principal.merchantId()) && !principal.merchantId().equals(merchantId)) {
+                throw new ForbiddenException("JWT não permite acesso ao merchant informado");
             }
         });
     }
@@ -37,12 +37,12 @@ public class JwtSecurityContext {
             if (principal.scopes().contains("fiscal:admin")) {
                 return;
             }
-            if (hasText(principal.bivaroTenantId())
-                && !principal.bivaroTenantId().equals(company.getBivaroTenantId())) {
+            if (hasText(principal.tenantId())
+                && !principal.tenantId().equals(company.getTenantId())) {
                 throw new ForbiddenException("JWT nao permite acesso a empresa emissora informada");
             }
-            if (hasText(principal.bivaroMerchantId())
-                && !principal.bivaroMerchantId().equals(company.getBivaroMerchantId())) {
+            if (hasText(principal.merchantId())
+                && !principal.merchantId().equals(company.getMerchantId())) {
                 throw new ForbiddenException("JWT nao permite acesso a empresa emissora informada");
             }
         });
@@ -51,11 +51,11 @@ public class JwtSecurityContext {
     public String constrainedTenant(String requestedTenant) {
         return current()
             .filter(principal -> !principal.scopes().contains("fiscal:admin"))
-            .map(JwtPrincipal::bivaroTenantId)
+            .map(JwtPrincipal::tenantId)
             .filter(this::hasText)
             .map(tokenTenant -> {
                 if (hasText(requestedTenant) && !tokenTenant.equals(requestedTenant)) {
-                    throw new ForbiddenException("JWT nao permite consultar outro tenant Bivaro");
+                    throw new ForbiddenException("JWT não permite consultar outro tenant");
                 }
                 return tokenTenant;
             })

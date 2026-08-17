@@ -28,15 +28,15 @@ public class FiscalNumberAllocator {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public FiscalNumberAllocation allocateByBivaroMerchant(String bivaroTenantId,
-                                                           String bivaroMerchantId,
+    public FiscalNumberAllocation allocateByMerchant(String tenantId,
+                                                           String merchantId,
                                                            DocumentModel model) {
-        if (isBlank(bivaroTenantId) || isBlank(bivaroMerchantId)) {
-            throw new BadRequestException("Informe companyId ou bivaroTenantId + bivaroMerchantId para emitir.");
+        if (isBlank(tenantId) || isBlank(merchantId)) {
+            throw new BadRequestException("Informe companyId ou tenantId + merchantId para emitir.");
         }
 
-        Company company = companyRepository.findByBivaroTenantIdAndBivaroMerchantIdForUpdate(bivaroTenantId, bivaroMerchantId)
-            .orElseThrow(() -> new NotFoundException("Empresa emissora nao encontrada para o lojista Bivaro"));
+        Company company = companyRepository.findByTenantIdAndMerchantIdForUpdate(tenantId, merchantId)
+            .orElseThrow(() -> new NotFoundException("Empresa emissora não encontrada para o merchant informado"));
 
         return allocate(company, model);
     }

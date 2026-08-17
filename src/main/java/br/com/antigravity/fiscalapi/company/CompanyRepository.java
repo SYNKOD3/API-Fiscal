@@ -11,15 +11,15 @@ import org.springframework.data.jpa.repository.Query;
 public interface CompanyRepository extends JpaRepository<Company, UUID> {
     Optional<Company> findByTaxId(String taxId);
 
-    Optional<Company> findByBivaroTenantIdAndBivaroMerchantId(String bivaroTenantId, String bivaroMerchantId);
+    Optional<Company> findByTenantIdAndMerchantId(String tenantId, String merchantId);
 
-    List<Company> findByBivaroTenantIdOrderByCreatedAtDesc(String bivaroTenantId);
+    List<Company> findByTenantIdOrderByCreatedAtDesc(String tenantId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Company c where c.id = :id")
     Optional<Company> findByIdForUpdate(UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select c from Company c where c.bivaroTenantId = :bivaroTenantId and c.bivaroMerchantId = :bivaroMerchantId")
-    Optional<Company> findByBivaroTenantIdAndBivaroMerchantIdForUpdate(String bivaroTenantId, String bivaroMerchantId);
+    @Query("select c from Company c where c.tenantId = :tenantId and c.merchantId = :merchantId")
+    Optional<Company> findByTenantIdAndMerchantIdForUpdate(String tenantId, String merchantId);
 }

@@ -58,7 +58,7 @@ public class AppProperties {
     public static class Jwt {
         private boolean enabled = false;
         private String secret = "";
-        private String issuer = "bivaro";
+        private String issuer = "fiscal-platform";
         private String audience = "fiscal-api";
 
         public boolean isEnabled() {

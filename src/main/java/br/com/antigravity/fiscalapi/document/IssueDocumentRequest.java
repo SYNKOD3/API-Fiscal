@@ -11,8 +11,8 @@ import java.util.UUID;
 
 public record IssueDocumentRequest(
     UUID companyId,
-    String bivaroTenantId,
-    String bivaroMerchantId,
+    String tenantId,
+    String merchantId,
     @NotNull DocumentModel model,
     @NotBlank String externalReference,
     @NotBlank String customerName,

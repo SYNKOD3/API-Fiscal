@@ -44,16 +44,16 @@ public class SefazController {
         return ApiEnvelope.of(sefazRouter.route(companyService.getById(companyId), model));
     }
 
-    @GetMapping("/bivaro-route")
+    @GetMapping("/merchant-route")
     @Operation(
-        summary = "Consultar rota SEFAZ por lojista Bivaro",
-        description = "Mostra a rota fiscal de um lojista usando os identificadores do Bivaro, sem exigir o UUID interno da API Fiscal."
+        summary = "Consultar rota SEFAZ por merchant",
+        description = "Mostra a rota fiscal de uma empresa usando os identificadores externos, sem exigir o UUID interno da API Fiscal."
     )
-    public ApiEnvelope<SefazRouteResponse> routeByBivaroMerchant(@RequestParam String bivaroTenantId,
-                                                                 @RequestParam String bivaroMerchantId,
-                                                                 @RequestParam DocumentModel model) {
+    public ApiEnvelope<SefazRouteResponse> routeByMerchant(@RequestParam String tenantId,
+                                                           @RequestParam String merchantId,
+                                                           @RequestParam DocumentModel model) {
         return ApiEnvelope.of(sefazRouter.route(
-            companyService.getByBivaroMerchant(bivaroTenantId, bivaroMerchantId),
+            companyService.getByMerchant(tenantId, merchantId),
             model
         ));
     }

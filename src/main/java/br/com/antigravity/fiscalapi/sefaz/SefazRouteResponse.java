@@ -6,8 +6,8 @@ import java.util.UUID;
 
 public record SefazRouteResponse(
     UUID companyId,
-    String bivaroTenantId,
-    String bivaroMerchantId,
+    String tenantId,
+    String merchantId,
     String companyTaxId,
     String stateCode,
     DocumentModel model,

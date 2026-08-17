@@ -44,8 +44,8 @@ public class CompanyController {
         summary = "Listar empresas emissoras",
         description = "Retorna todas as empresas cadastradas para emissao fiscal multiempresa."
     )
-    public ApiEnvelope<List<CompanyResponse>> list(@RequestParam(required = false) String bivaroTenantId) {
-        return ApiEnvelope.of(companyService.list(bivaroTenantId));
+    public ApiEnvelope<List<CompanyResponse>> list(@RequestParam(required = false) String tenantId) {
+        return ApiEnvelope.of(companyService.list(tenantId));
     }
 
     public record ApiEnvelope<T>(T data) {

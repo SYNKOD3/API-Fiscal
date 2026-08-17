@@ -57,7 +57,7 @@ app:
     jwt:
       enabled: ${JWT_AUTH_ENABLED:false}
       secret: ${JWT_SECRET:}
-      issuer: ${JWT_ISSUER:bivaro}
+      issuer: ${JWT_ISSUER:fiscal-platform}
       audience: ${JWT_AUDIENCE:fiscal-api}
   fiscal:
     provider: ${FISCAL_PROVIDER:STUB}
@@ -120,7 +120,7 @@ app:
     jwt:
       enabled: ${JWT_AUTH_ENABLED:true}
       secret: ${JWT_SECRET}
-      issuer: ${JWT_ISSUER:bivaro}
+      issuer: ${JWT_ISSUER:fiscal-platform}
       audience: ${JWT_AUDIENCE:fiscal-api}
   fiscal:
     provider: ${FISCAL_PROVIDER:LIBRARY}

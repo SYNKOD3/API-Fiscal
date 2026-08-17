@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public record CompanyResponse(
     UUID id,
-    String bivaroTenantId,
-    String bivaroMerchantId,
+    String tenantId,
+    String merchantId,
     String callbackUrl,
     String legalName,
     String taxId,
@@ -40,8 +40,8 @@ public record CompanyResponse(
     public static CompanyResponse from(Company company, boolean certificateConfigured) {
         return new CompanyResponse(
             company.getId(),
-            company.getBivaroTenantId(),
-            company.getBivaroMerchantId(),
+            company.getTenantId(),
+            company.getMerchantId(),
             company.getCallbackUrl(),
             company.getLegalName(),
             company.getTaxId(),

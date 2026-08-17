@@ -64,8 +64,8 @@ public class JwtTokenService {
             stringClaim(claims, "iss"),
             firstAudience(claims),
             stringClaim(claims, "jti"),
-            stringClaim(claims, "bivaroTenantId"),
-            stringClaim(claims, "bivaroMerchantId"),
+            stringClaim(claims, "tenantId"),
+            stringClaim(claims, "merchantId"),
             scopes(claims),
             instantClaim(claims, "exp")
         );
