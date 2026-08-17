@@ -41,12 +41,12 @@ create table fiscal_documents (
     created_at timestamp with time zone not null,
     customer_name varchar(255) not null,
     external_reference varchar(255) not null,
-    fiscal_xml clob,
+    fiscal_xml text,
     invoice_number bigint not null,
     last_error varchar(1000),
     model varchar(16) not null,
     next_retry_at timestamp with time zone,
-    payload_json clob not null,
+    payload_json text not null,
     receipt_content varchar(4096),
     retry_count integer not null,
     series_number integer not null,
@@ -71,7 +71,7 @@ create table fiscal_audit_events (
     document_id uuid,
     event_type varchar(64) not null,
     message varchar(1000) not null,
-    details clob,
+    details text,
     created_at timestamp with time zone not null,
     primary key (id)
 );

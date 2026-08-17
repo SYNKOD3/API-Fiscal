@@ -1,7 +1,9 @@
 package br.com.antigravity.fiscalapi.document;
 
+import br.com.antigravity.fiscalapi.operational.OperationalRequestContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -34,8 +36,16 @@ public class FiscalDocumentController {
         summary = "Emitir documento fiscal",
         description = "Emite NF-e ou NFC-e para uma empresa. Se o provedor fiscal estiver indisponivel, gera contingencia local com chave, XML e comprovante."
     )
-    public ApiEnvelope<DocumentResponse> issue(@Valid @RequestBody IssueDocumentRequest request) {
-        return ApiEnvelope.of(documentService.issue(request));
+    public ApiEnvelope<DocumentResponse> issue(@Valid @RequestBody IssueDocumentRequest request,
+                                               HttpServletRequest servletRequest) {
+        DocumentResponse response = documentService.issue(request);
+        OperationalRequestContext.attachFiscalDocument(
+            servletRequest,
+            response.companyId(),
+            response.id(),
+            response.externalReference()
+        );
+        return ApiEnvelope.of(response);
     }
 
     @GetMapping("/{id}")
@@ -43,8 +53,15 @@ public class FiscalDocumentController {
         summary = "Consultar documento fiscal",
         description = "Busca os dados de uma NF-e/NFC-e pelo identificador interno."
     )
-    public ApiEnvelope<DocumentResponse> getById(@PathVariable UUID id) {
-        return ApiEnvelope.of(documentService.getById(id));
+    public ApiEnvelope<DocumentResponse> getById(@PathVariable UUID id, HttpServletRequest servletRequest) {
+        DocumentResponse response = documentService.getById(id);
+        OperationalRequestContext.attachFiscalDocument(
+            servletRequest,
+            response.companyId(),
+            response.id(),
+            response.externalReference()
+        );
+        return ApiEnvelope.of(response);
     }
 
     @GetMapping
@@ -61,8 +78,15 @@ public class FiscalDocumentController {
         summary = "Reprocessar documento fiscal",
         description = "Tenta reenviar para a SEFAZ um documento que ficou em contingencia ou com retry agendado."
     )
-    public ApiEnvelope<DocumentResponse> retry(@PathVariable UUID id) {
-        return ApiEnvelope.of(documentService.retry(id));
+    public ApiEnvelope<DocumentResponse> retry(@PathVariable UUID id, HttpServletRequest servletRequest) {
+        DocumentResponse response = documentService.retry(id);
+        OperationalRequestContext.attachFiscalDocument(
+            servletRequest,
+            response.companyId(),
+            response.id(),
+            response.externalReference()
+        );
+        return ApiEnvelope.of(response);
     }
 
     @GetMapping(value = "/{id}/receipt", produces = MediaType.TEXT_PLAIN_VALUE)

@@ -1,7 +1,9 @@
 package br.com.antigravity.fiscalapi.company;
 
+import br.com.antigravity.fiscalapi.operational.OperationalRequestContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -30,8 +32,11 @@ public class CompanyController {
         summary = "Cadastrar empresa emissora",
         description = "Cria uma empresa com dados fiscais, numeracao, ambiente, certificado e CSC para emissao de NF-e/NFC-e."
     )
-    public ApiEnvelope<CompanyResponse> create(@Valid @RequestBody CreateCompanyRequest request) {
-        return ApiEnvelope.of(companyService.create(request));
+    public ApiEnvelope<CompanyResponse> create(@Valid @RequestBody CreateCompanyRequest request,
+                                               HttpServletRequest servletRequest) {
+        CompanyResponse response = companyService.create(request);
+        OperationalRequestContext.attachCompany(servletRequest, response.id());
+        return ApiEnvelope.of(response);
     }
 
     @GetMapping

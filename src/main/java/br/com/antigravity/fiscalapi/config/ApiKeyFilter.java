@@ -1,5 +1,6 @@
 package br.com.antigravity.fiscalapi.config;
 
+import br.com.antigravity.fiscalapi.operational.OperationalRequestContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,10 +38,12 @@ public class ApiKeyFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String apiKey = request.getHeader(HEADER_NAME);
         if (!properties.getSecurity().getApiKey().equals(apiKey)) {
+            OperationalRequestContext.attachError(request, "unauthorized", "API key invalida");
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setContentType("application/json");
             response.getWriter().write("""
-                {"error":{"code":"unauthorized","message":"API key invalida"}}""");
+                {"error":{"code":"unauthorized","message":"API key invalida","requestId":"%s"}}"""
+                .formatted(OperationalRequestContext.requestId(request)));
             return;
         }
 

@@ -12,6 +12,9 @@ import br.com.antigravity.fiscalapi.document.DocumentModel;
 import br.com.antigravity.fiscalapi.document.FiscalItemRequest;
 import br.com.antigravity.fiscalapi.document.IssueDocumentRequest;
 import br.com.antigravity.fiscalapi.document.FiscalDocumentService;
+import br.com.antigravity.fiscalapi.operational.OperationalLogLevel;
+import br.com.antigravity.fiscalapi.operational.OperationalLogRecord;
+import br.com.antigravity.fiscalapi.operational.OperationalLogService;
 import br.com.antigravity.fiscalapi.sefaz.SefazRouter;
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,12 +37,16 @@ class FiscalApiApplicationTests {
     @Autowired
     private SefazRouter sefazRouter;
 
+    @Autowired
+    private OperationalLogService operationalLogService;
+
     @Test
     void contextLoads() {
         assertThat(companyService).isNotNull();
         assertThat(fiscalDocumentService).isNotNull();
         assertThat(fiscalAuditService).isNotNull();
         assertThat(sefazRouter).isNotNull();
+        assertThat(operationalLogService).isNotNull();
     }
 
     @Test
@@ -141,6 +148,33 @@ class FiscalApiApplicationTests {
         assertThat(route.stateCode()).isEqualTo("BA");
         assertThat(route.authorizerStrategy()).isEqualTo("JAVA_NFE_BY_EMITTER_UF");
         assertThat(route.available()).isTrue();
+    }
+
+    @Test
+    void recordsOperationalLogsForSupportAndTroubleshooting() {
+        operationalLogService.record(new OperationalLogRecord(
+            "req-test-001",
+            OperationalLogLevel.WARN,
+            "API_REQUEST_FAILED",
+            "POST",
+            "/api/v1/documents",
+            422,
+            35L,
+            null,
+            null,
+            "PEDIDO-ERRO",
+            "Requisicao finalizada com erro: total invalido",
+            "validation_error"
+        ));
+
+        assertThat(operationalLogService.list(10, OperationalLogLevel.WARN, null, null))
+            .anySatisfy(log -> {
+                assertThat(log.requestId()).isEqualTo("req-test-001");
+                assertThat(log.eventType()).isEqualTo("API_REQUEST_FAILED");
+                assertThat(log.externalReference()).isEqualTo("PEDIDO-ERRO");
+            });
+
+        assertThat(operationalLogService.getByRequestId("req-test-001").statusCode()).isEqualTo(422);
     }
 
     private FiscalItemRequest item(String sku, String description, BigDecimal totalAmount) {

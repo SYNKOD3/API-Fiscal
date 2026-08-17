@@ -14,6 +14,7 @@ Base Spring Boot para emissao de NF-e e NFC-e em ambiente multiempresa, com cont
 - Perfil `prod` com PostgreSQL, Flyway, console dev fechado e validacao de segredos no boot.
 - Vinculo com lojistas do Bivaro por `bivaroTenantId` e `bivaroMerchantId`.
 - Roteamento SEFAZ por UF da empresa emitente, nao pela UF do comprador.
+- Logs operacionais com `X-Request-Id`, status HTTP, tempo de resposta e motivo de erro para suporte.
 
 ## Fluxo operacional
 
@@ -42,6 +43,11 @@ Base Spring Boot para emissao de NF-e e NFC-e em ambiente multiempresa, com cont
 - `GET /api/v1/sefaz/bivaro-route?bivaroTenantId={tenant}&bivaroMerchantId={merchant}&model=NFCE`
 - `GET /api/v1/audit/companies/{companyId}`
 - `GET /api/v1/audit/documents/{documentId}`
+- `GET /api/v1/operational-logs`
+- `GET /api/v1/operational-logs?level=WARN&limit=100`
+- `GET /api/v1/operational-logs?companyId={uuid}`
+- `GET /api/v1/operational-logs?documentId={uuid}`
+- `GET /api/v1/operational-logs/requests/{requestId}`
 
 ## Bivaro como SaaS fiscal
 
@@ -287,3 +293,26 @@ Artefatos disponiveis:
 - Comprovante textual em `/api/v1/documents/{id}/receipt`.
 - Visualizacao HTML imprimivel em `/api/v1/documents/{id}/print`.
 - Eventos de auditoria por empresa/documento nos endpoints `/api/v1/audit/...`.
+
+## Logs operacionais
+
+Toda requisicao em `/api/**` recebe um header `X-Request-Id`. Se o cliente enviar esse header, a API preserva o valor; caso contrario, gera um UUID automaticamente.
+
+Os logs operacionais ficam em `operational_logs` e registram:
+
+- `requestId`, metodo, path, status HTTP e duracao.
+- Nivel `INFO`, `WARN` ou `ERROR`.
+- Empresa, documento e referencia externa quando a chamada estiver vinculada a uma emissao.
+- Codigo/mensagem de erro tratada, sem gravar API key, CSC, senha de certificado ou payload fiscal bruto.
+
+Consultas uteis:
+
+```http
+GET /api/v1/operational-logs?level=WARN&limit=100
+X-API-Key: sua-chave-forte
+```
+
+```http
+GET /api/v1/operational-logs/requests/{requestId}
+X-API-Key: sua-chave-forte
+```

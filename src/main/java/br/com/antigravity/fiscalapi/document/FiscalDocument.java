@@ -8,7 +8,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -56,14 +55,13 @@ public class FiscalDocument {
     @Column(nullable = false)
     private String customerName;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String payloadJson;
 
     @Column(length = 4096)
     private String receiptContent;
 
-    @Lob
+    @Column(columnDefinition = "text")
     private String fiscalXml;
 
     private String authorizationNumber;

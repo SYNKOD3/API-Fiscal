@@ -3,7 +3,6 @@ package br.com.antigravity.fiscalapi.audit;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -24,7 +23,7 @@ public class FiscalAuditEvent {
     @Column(nullable = false, length = 1000)
     private String message;
 
-    @Lob
+    @Column(columnDefinition = "text")
     private String details;
 
     @Column(nullable = false)
