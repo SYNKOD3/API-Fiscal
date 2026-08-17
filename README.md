@@ -369,6 +369,24 @@ Para subir a aplicacao em modo producao com Docker:
 docker compose --env-file .env up -d --build
 ```
 
+## Teste de tempo de resposta
+
+Existe um benchmark leve, desligado por padrao, para medir os endpoints principais sem depender de servidor externo. Ele usa MockMvc, H2 em memoria e `FISCAL_PROVIDER=STUB`, entao serve para medir overhead da API, controllers, filtros, banco local e serializacao. Nao mede latencia real da SEFAZ.
+
+Para rodar:
+
+```powershell
+mvn -DperformanceTests=true -Dtest=PerformanceSmokeTests test
+```
+
+Para controlar o volume de chamadas:
+
+```powershell
+mvn -DperformanceTests=true -DperformanceReadRuns=100 -DperformanceWriteRuns=30 -Dtest=PerformanceSmokeTests test
+```
+
+O resultado mostra `Min`, `Avg`, `P50`, `P95`, `P99` e `Max` em milissegundos para healthcheck, listagem de empresas, listagem de documentos e emissao simulada.
+
 Para rodar sem Docker, configure:
 
 ```powershell
