@@ -65,6 +65,9 @@ app:
     enabled: ${APP_DEV_CONSOLE_ENABLED:true}
   open-api:
     public-access: ${OPENAPI_PUBLIC_ACCESS:true}
+  certificates:
+    storage-path: ${CERTIFICATE_STORAGE_PATH:certificates}
+    max-size-bytes: ${CERTIFICATE_MAX_SIZE_BYTES:5242880}
 
 logging:
   level:
@@ -120,6 +123,9 @@ app:
     enabled: ${APP_DEV_CONSOLE_ENABLED:false}
   open-api:
     public-access: ${OPENAPI_PUBLIC_ACCESS:false}
+  certificates:
+    storage-path: ${CERTIFICATE_STORAGE_PATH:/var/lib/fiscal-api/certificates}
+    max-size-bytes: ${CERTIFICATE_MAX_SIZE_BYTES:5242880}
 
 server:
   error:

@@ -1,5 +1,7 @@
 package br.com.antigravity.fiscalapi.fiscal;
 
+import br.com.antigravity.fiscalapi.certificate.CertificateCredentials;
+import br.com.antigravity.fiscalapi.certificate.CompanyCertificateService;
 import br.com.antigravity.fiscalapi.company.Company;
 import br.com.antigravity.fiscalapi.company.FiscalEnvironment;
 import br.com.swconsultoria.certificado.Certificado;
@@ -16,12 +18,18 @@ import org.springframework.stereotype.Component;
 public class JavaNfeConfigurationFactory {
 
     private static final ZoneId BRAZIL_FISCAL_ZONE = ZoneId.of("America/Sao_Paulo");
+    private final CompanyCertificateService certificateService;
+
+    public JavaNfeConfigurationFactory(CompanyCertificateService certificateService) {
+        this.certificateService = certificateService;
+    }
 
     public ConfiguracoesNfe create(Company company) {
         try {
+            CertificateCredentials credentials = certificateService.resolveForEmission(company);
             Certificado certificate = CertificadoService.certificadoPfx(
-                company.getCertificatePath(),
-                company.getCertificatePassword()
+                credentials.storagePath(),
+                credentials.password()
             );
 
             return ConfiguracoesNfe.criarConfiguracoes(

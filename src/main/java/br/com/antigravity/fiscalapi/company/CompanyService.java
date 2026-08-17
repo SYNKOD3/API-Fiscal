@@ -1,6 +1,8 @@
 package br.com.antigravity.fiscalapi.company;
 
 import br.com.antigravity.fiscalapi.audit.FiscalAuditService;
+import br.com.antigravity.fiscalapi.certificate.CertificateStatus;
+import br.com.antigravity.fiscalapi.certificate.CompanyCertificateRepository;
 import br.com.antigravity.fiscalapi.shared.ConflictException;
 import br.com.antigravity.fiscalapi.shared.NotFoundException;
 import java.util.List;
@@ -12,10 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class CompanyService {
 
     private final CompanyRepository companyRepository;
+    private final CompanyCertificateRepository certificateRepository;
     private final FiscalAuditService auditService;
 
-    public CompanyService(CompanyRepository companyRepository, FiscalAuditService auditService) {
+    public CompanyService(CompanyRepository companyRepository,
+                          CompanyCertificateRepository certificateRepository,
+                          FiscalAuditService auditService) {
         this.companyRepository = companyRepository;
+        this.certificateRepository = certificateRepository;
         this.auditService = auditService;
     }
 
@@ -64,14 +70,14 @@ public class CompanyService {
         );
         Company saved = companyRepository.save(company);
         auditService.record(saved.getId(), null, "COMPANY_CREATED", "Empresa emissora cadastrada", saved.getTaxId());
-        return CompanyResponse.from(saved);
+        return response(saved);
     }
 
     @Transactional(readOnly = true)
     public List<CompanyResponse> list(String bivaroTenantId) {
         return hasText(bivaroTenantId)
-            ? companyRepository.findByBivaroTenantIdOrderByCreatedAtDesc(bivaroTenantId).stream().map(CompanyResponse::from).toList()
-            : companyRepository.findAll().stream().map(CompanyResponse::from).toList();
+            ? companyRepository.findByBivaroTenantIdOrderByCreatedAtDesc(bivaroTenantId).stream().map(this::response).toList()
+            : companyRepository.findAll().stream().map(this::response).toList();
     }
 
     @Transactional(readOnly = true)
@@ -88,5 +94,14 @@ public class CompanyService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private CompanyResponse response(Company company) {
+        boolean managedCertificateConfigured = certificateRepository.existsByCompany_IdAndStatus(
+            company.getId(),
+            CertificateStatus.ACTIVE
+        );
+        boolean legacyCertificateConfigured = hasText(company.getCertificatePath());
+        return CompanyResponse.from(company, managedCertificateConfigured || legacyCertificateConfigured);
     }
 }

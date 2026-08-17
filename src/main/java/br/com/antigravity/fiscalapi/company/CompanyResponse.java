@@ -33,6 +33,11 @@ public record CompanyResponse(
     OffsetDateTime createdAt
 ) {
     public static CompanyResponse from(Company company) {
+        boolean legacyCertificateConfigured = company.getCertificatePath() != null && !company.getCertificatePath().isBlank();
+        return from(company, legacyCertificateConfigured);
+    }
+
+    public static CompanyResponse from(Company company, boolean certificateConfigured) {
         return new CompanyResponse(
             company.getId(),
             company.getBivaroTenantId(),
@@ -53,7 +58,7 @@ public record CompanyResponse(
             company.getPhone(),
             company.getTaxRegime(),
             company.getFiscalEnvironment(),
-            company.getCertificatePath() != null && !company.getCertificatePath().isBlank(),
+            certificateConfigured,
             company.getCscId() != null && !company.getCscId().isBlank()
                 && company.getCscToken() != null && !company.getCscToken().isBlank(),
             company.getNfeSeriesNumber(),

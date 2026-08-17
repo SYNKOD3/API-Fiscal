@@ -31,6 +31,7 @@ public class ProductionReadinessValidator implements ApplicationRunner {
         requireLibraryProvider();
         requirePrivateDevTools();
         requirePostgresDatasource();
+        requireCertificateStorage();
     }
 
     private boolean isProductionProfile() {
@@ -73,6 +74,13 @@ public class ProductionReadinessValidator implements ApplicationRunner {
         String datasourceUrl = environment.getProperty("spring.datasource.url", "");
         if (!datasourceUrl.startsWith("jdbc:postgresql:")) {
             throw new IllegalStateException("Producao exige spring.datasource.url PostgreSQL.");
+        }
+    }
+
+    private void requireCertificateStorage() {
+        String storagePath = properties.getCertificates().getStoragePath();
+        if (storagePath == null || storagePath.isBlank() || "certificates".equals(storagePath)) {
+            throw new IllegalStateException("Producao exige CERTIFICATE_STORAGE_PATH privado e persistente.");
         }
     }
 }

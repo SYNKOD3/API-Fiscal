@@ -32,12 +32,17 @@ services:
       APP_SECRETS_KEY: ${APP_SECRETS_KEY}
       FISCAL_PROVIDER: ${FISCAL_PROVIDER:-LIBRARY}
       FISCAL_UNAVAILABLE_STATES: ${FISCAL_UNAVAILABLE_STATES:-}
+      CERTIFICATE_STORAGE_PATH: ${CERTIFICATE_STORAGE_PATH:-/var/lib/fiscal-api/certificates}
+      CERTIFICATE_MAX_SIZE_BYTES: ${CERTIFICATE_MAX_SIZE_BYTES:-5242880}
       APP_DEV_CONSOLE_ENABLED: ${APP_DEV_CONSOLE_ENABLED:-false}
       OPENAPI_ENABLED: ${OPENAPI_ENABLED:-false}
       OPENAPI_PUBLIC_ACCESS: ${OPENAPI_PUBLIC_ACCESS:-false}
     ports:
       - "8081:8081"
+    volumes:
+      - fiscal_api_certificates:/var/lib/fiscal-api/certificates
     restart: unless-stopped
 
 volumes:
   fiscal_api_postgres:
+  fiscal_api_certificates:

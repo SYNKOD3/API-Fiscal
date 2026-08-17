@@ -1,5 +1,6 @@
 package br.com.antigravity.fiscalapi.fiscal;
 
+import br.com.antigravity.fiscalapi.certificate.CompanyCertificateService;
 import br.com.antigravity.fiscalapi.config.AppProperties;
 import br.com.antigravity.fiscalapi.company.Company;
 import br.com.antigravity.fiscalapi.company.CompanyRepository;
@@ -25,6 +26,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
     private final JavaNfeMapper javaNfeMapper;
     private final JavaNfeConfigurationFactory javaNfeConfigurationFactory;
     private final SefazRouter sefazRouter;
+    private final CompanyCertificateService certificateService;
 
     public LibraryFiscalGateway(AppProperties properties,
                                 CompanyRepository companyRepository,
@@ -32,7 +34,8 @@ public class LibraryFiscalGateway implements FiscalGateway {
                                 FiscalXmlPreviewRenderer fiscalXmlPreviewRenderer,
                                 JavaNfeMapper javaNfeMapper,
                                 JavaNfeConfigurationFactory javaNfeConfigurationFactory,
-                                SefazRouter sefazRouter) {
+                                SefazRouter sefazRouter,
+                                CompanyCertificateService certificateService) {
         this.properties = properties;
         this.companyRepository = companyRepository;
         this.fiscalXmlBuilder = fiscalXmlBuilder;
@@ -40,6 +43,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
         this.javaNfeMapper = javaNfeMapper;
         this.javaNfeConfigurationFactory = javaNfeConfigurationFactory;
         this.sefazRouter = sefazRouter;
+        this.certificateService = certificateService;
     }
 
     @Override
@@ -69,12 +73,8 @@ public class LibraryFiscalGateway implements FiscalGateway {
     }
 
     private void validateFiscalConfiguration(Company company) {
-        if (company.getCertificatePath() == null || company.getCertificatePath().isBlank()) {
+        if (!certificateService.hasCertificateForEmission(company)) {
             throw new FiscalGatewayException("Certificado digital da empresa nao configurado", false);
-        }
-
-        if (company.getCertificatePassword() == null || company.getCertificatePassword().isBlank()) {
-            throw new FiscalGatewayException("Senha do certificado digital da empresa nao configurada", false);
         }
     }
 

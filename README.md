@@ -15,6 +15,7 @@ Base Spring Boot para emissao de NF-e e NFC-e em ambiente multiempresa, com cont
 - Vinculo com lojistas do Bivaro por `bivaroTenantId` e `bivaroMerchantId`.
 - Roteamento SEFAZ por UF da empresa emitente, nao pela UF do comprador.
 - Logs operacionais com `X-Request-Id`, status HTTP, tempo de resposta e motivo de erro para suporte.
+- Upload e gestao de certificado A1 por empresa emissora, com senha criptografada e storage privado.
 
 ## Fluxo operacional
 
@@ -31,6 +32,8 @@ Base Spring Boot para emissao de NF-e e NFC-e em ambiente multiempresa, com cont
 - `POST /api/v1/companies`
 - `GET /api/v1/companies`
 - `GET /api/v1/companies?bivaroTenantId={tenant}`
+- `POST /api/v1/companies/{companyId}/certificates`
+- `GET /api/v1/companies/{companyId}/certificates`
 - `POST /api/v1/documents`
 - `GET /api/v1/documents/{id}`
 - `GET /api/v1/documents?companyId={uuid}`
@@ -99,6 +102,52 @@ Content-Type: application/json
   "nextNfceNumber": 1
 }
 ```
+
+## Upload de certificado A1
+
+Para o fluxo SaaS da Bivaro, o certificado nao deve ficar solto nem ser escolhido manualmente na emissao. Ele e sempre vinculado a uma empresa emissora.
+
+Fluxo recomendado:
+
+```text
+Cliente sobe o A1 na Bivaro
+Bivaro envia .pfx/.p12 + senha para a API Fiscal
+API valida o arquivo e a senha
+API salva o arquivo em storage privado
+API salva a senha criptografada no banco
+API marca esse certificado como ACTIVE para a empresa
+```
+
+Endpoint:
+
+```http
+POST /api/v1/companies/{companyId}/certificates
+X-API-Key: sua-chave-forte
+Content-Type: multipart/form-data
+
+file=@empresa.pfx
+password=senha-do-certificado
+```
+
+Resposta:
+
+```json
+{
+  "data": {
+    "id": "UUID_DO_CERTIFICADO",
+    "companyId": "UUID_DA_EMPRESA",
+    "originalFileName": "empresa.pfx",
+    "certificateTaxId": "12345678000199",
+    "serialNumber": "ABC123",
+    "validUntil": "2027-08-17T12:00:00Z",
+    "status": "ACTIVE"
+  }
+}
+```
+
+Ao enviar um novo certificado para a mesma empresa, a API marca o anterior como `REPLACED` e ativa o novo. A emissao sempre usa o certificado `ACTIVE` da empresa localizada por `companyId` ou por `bivaroTenantId + bivaroMerchantId`.
+
+A API tenta extrair o CNPJ do certificado e bloqueia o upload quando o CNPJ extraido nao confere com o CNPJ da empresa. Alguns certificados podem nao expor o CNPJ em formato textual simples; nesses casos, a senha/validade ainda sao validadas e o upload e aceito sem `certificateTaxId`.
 
 ## Exemplo de emissao
 
@@ -250,6 +299,7 @@ Edite o `.env` com valores reais. Os campos obrigatorios sao:
 - `APP_API_KEY`: chave forte usada pelo seu sistema no header `X-API-Key`.
 - `APP_SECRETS_KEY`: chave fixa com pelo menos 32 caracteres para criptografar senha do certificado e CSC.
 - `FISCAL_PROVIDER=LIBRARY`: usa a camada da biblioteca fiscal real.
+- `CERTIFICATE_STORAGE_PATH`: pasta/volume privado e persistente para armazenar os arquivos `.pfx/.p12`.
 
 Para subir a aplicacao em modo producao com Docker:
 
@@ -267,6 +317,7 @@ $env:DATABASE_PASSWORD="senha-forte-do-banco"
 $env:APP_API_KEY="chave-forte-com-mais-de-24-caracteres"
 $env:APP_SECRETS_KEY="chave-fixa-com-mais-de-32-caracteres"
 $env:FISCAL_PROVIDER="LIBRARY"
+$env:CERTIFICATE_STORAGE_PATH="C:/fiscal-api/certificates"
 $env:APP_DEV_CONSOLE_ENABLED="false"
 $env:OPENAPI_ENABLED="false"
 $env:OPENAPI_PUBLIC_ACCESS="false"
@@ -280,6 +331,7 @@ Travas aplicadas no perfil `prod`:
 - A aplicacao nao sobe se `FISCAL_PROVIDER` nao for `LIBRARY`.
 - A aplicacao nao sobe se `/dev` ou Swagger publico estiverem ligados.
 - A aplicacao nao sobe se o datasource nao for PostgreSQL.
+- A aplicacao nao sobe se `CERTIFICATE_STORAGE_PATH` nao apontar para um storage privado/persistente.
 
 Nunca altere `APP_SECRETS_KEY` depois de cadastrar certificados/CSC sem processo de recriptografia dos segredos ja gravados.
 

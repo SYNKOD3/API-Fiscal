@@ -12,6 +12,7 @@ public class AppProperties {
     private final Retry retry = new Retry();
     private final DevConsole devConsole = new DevConsole();
     private final OpenApi openApi = new OpenApi();
+    private final Certificates certificates = new Certificates();
 
     public Security getSecurity() {
         return security;
@@ -31,6 +32,10 @@ public class AppProperties {
 
     public OpenApi getOpenApi() {
         return openApi;
+    }
+
+    public Certificates getCertificates() {
+        return certificates;
     }
 
     public static class Security {
@@ -117,6 +122,27 @@ public class AppProperties {
 
         public void setPublicAccess(boolean publicAccess) {
             this.publicAccess = publicAccess;
+        }
+    }
+
+    public static class Certificates {
+        private String storagePath = "certificates";
+        private long maxSizeBytes = 5242880;
+
+        public String getStoragePath() {
+            return storagePath;
+        }
+
+        public void setStoragePath(String storagePath) {
+            this.storagePath = storagePath;
+        }
+
+        public long getMaxSizeBytes() {
+            return maxSizeBytes;
+        }
+
+        public void setMaxSizeBytes(long maxSizeBytes) {
+            this.maxSizeBytes = maxSizeBytes;
         }
     }
 

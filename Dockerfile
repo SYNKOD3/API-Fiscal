@@ -8,6 +8,7 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 RUN useradd --system --create-home --home-dir /app fiscalapi
+RUN mkdir -p /var/lib/fiscal-api/certificates && chown -R fiscalapi:fiscalapi /var/lib/fiscal-api
 COPY --from=build /workspace/target/fiscal-api-0.0.1-SNAPSHOT.jar /app/fiscal-api.jar
 USER fiscalapi
 EXPOSE 8081
