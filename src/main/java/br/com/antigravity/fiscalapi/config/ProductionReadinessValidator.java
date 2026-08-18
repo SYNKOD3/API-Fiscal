@@ -11,7 +11,7 @@ public class ProductionReadinessValidator implements ApplicationRunner {
 
     private static final String DEV_API_KEY = "change-me";
     private static final String DEV_SECRETS_KEY = "dev-insecure-change-me";
-    private static final String DEV_JWT_SECRET = "change-me";
+    private static final String DEV_JWT_SECRET = "dev-only-jwt-secret-change-before-production";
 
     private final AppProperties properties;
     private final Environment environment;

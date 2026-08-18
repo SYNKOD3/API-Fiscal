@@ -57,7 +57,7 @@ public class AppProperties {
 
     public static class Jwt {
         private boolean enabled = false;
-        private String secret = "";
+        private String secret = "dev-only-jwt-secret-change-before-production";
         private String issuer = "fiscal-platform";
         private String audience = "fiscal-api";
 

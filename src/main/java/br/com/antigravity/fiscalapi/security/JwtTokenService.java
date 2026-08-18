@@ -10,10 +10,12 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Service;
 public class JwtTokenService {
 
     private static final String HMAC_SHA256 = "HmacSHA256";
+    private static final Base64.Encoder BASE64_URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder BASE64_URL_DECODER = Base64.getUrlDecoder();
 
     private final AppProperties properties;
@@ -69,6 +72,38 @@ public class JwtTokenService {
             scopes(claims),
             instantClaim(claims, "exp")
         );
+    }
+
+    public String issue(String subject,
+                        String tenantId,
+                        String merchantId,
+                        Collection<String> scopes,
+                        long expiresInSeconds) {
+        Map<String, Object> header = Map.of("alg", "HS256", "typ", "JWT");
+        Map<String, Object> claims = new LinkedHashMap<>();
+        claims.put("iss", properties.getSecurity().getJwt().getIssuer());
+        claims.put("aud", properties.getSecurity().getJwt().getAudience());
+        claims.put("sub", hasText(subject) ? subject : "dev-console");
+        claims.put("jti", UUID.randomUUID().toString());
+        if (hasText(tenantId)) {
+            claims.put("tenantId", tenantId);
+        }
+        if (hasText(merchantId)) {
+            claims.put("merchantId", merchantId);
+        }
+        claims.put("scopes", scopes == null || scopes.isEmpty() ? List.of("fiscal:admin") : List.copyOf(scopes));
+        claims.put("exp", Instant.now(clock).plusSeconds(expiresInSeconds).getEpochSecond());
+
+        String signedContent = encodeJson(header) + "." + encodeJson(claims);
+        return signedContent + "." + BASE64_URL_ENCODER.encodeToString(sign(signedContent));
+    }
+
+    private String encodeJson(Map<String, Object> value) {
+        try {
+            return BASE64_URL_ENCODER.encodeToString(objectMapper.writeValueAsBytes(value));
+        } catch (Exception ex) {
+            throw new IllegalStateException("Falha ao gerar JWT", ex);
+        }
     }
 
     private Map<String, Object> decodeJson(String value) {
@@ -179,6 +214,10 @@ public class JwtTokenService {
     private String stringClaim(Map<String, Object> claims, String name) {
         Object value = claims.get(name);
         return value == null ? null : value.toString();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private Instant instantClaim(Map<String, Object> claims, String name) {

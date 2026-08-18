@@ -161,6 +161,8 @@ Authorization: Bearer <jwt>
 
 A API key identifica a integração. O JWT autoriza a ação, os escopos e o vínculo com `tenantId` e `merchantId`.
 
+A API não depende de uma plataforma específica para funcionar. Os campos `tenantId` e `merchantId` são identificadores genéricos da plataforma que estiver integrando. Cada integrador pode usar seus próprios IDs, desde que o JWT enviado seja assinado com o segredo configurado na Fiscal API.
+
 Exemplo de payload JWT:
 
 ```json
@@ -202,6 +204,74 @@ fiscal:documents:read        GET /api/v1/documents...
 fiscal:audit:read            GET /api/v1/audit...
 fiscal:logs:read             GET /api/v1/operational-logs...
 fiscal:sefaz:read            GET /api/v1/sefaz...
+```
+
+## JWT Para Testes Locais
+
+Em ambiente local, o JWT fica desativado por padrão:
+
+```env
+JWT_AUTH_ENABLED=false
+```
+
+Nesse modo, basta enviar a API key:
+
+```http
+X-API-Key: change-me
+```
+
+Para testar o fluxo com JWT ativado, habilite:
+
+```env
+JWT_AUTH_ENABLED=true
+```
+
+Com o console dev habilitado, gere um token de teste pelo endpoint:
+
+```http
+POST /dev/jwt
+Content-Type: application/json
+```
+
+```json
+{
+  "subject": "dev-console",
+  "tenantId": "tenant-dev",
+  "merchantId": "merchant-dev",
+  "scopes": ["fiscal:admin"],
+  "expiresInMinutes": 60
+}
+```
+
+Resposta:
+
+```json
+{
+  "accessToken": "JWT_GERADO",
+  "tokenType": "Bearer",
+  "expiresInSeconds": 3600,
+  "headerName": "Authorization",
+  "headerValue": "Bearer JWT_GERADO"
+}
+```
+
+Use o valor de `headerValue` nas chamadas protegidas:
+
+```http
+X-API-Key: change-me
+Authorization: Bearer JWT_GERADO
+```
+
+Também é possível gerar o JWT pelo console dev:
+
+```text
+http://localhost:8081/dev/index.html
+```
+
+Esse endpoint só deve existir em ambiente de desenvolvimento. Em produção, mantenha:
+
+```env
+APP_DEV_CONSOLE_ENABLED=false
 ```
 
 ## Fluxo de Uso

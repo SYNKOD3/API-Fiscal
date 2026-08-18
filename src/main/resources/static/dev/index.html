@@ -309,12 +309,16 @@
         <label>API key
           <input id="apiKey" value="change-me" type="password">
         </label>
+        <label>JWT dev opcional
+          <textarea id="jwtToken" placeholder="Clique em Gerar JWT dev ou cole um token Bearer aqui"></textarea>
+        </label>
         <div class="actions">
           <button id="saveSettings">Salvar</button>
+          <button id="generateJwt" class="secondary">Gerar JWT dev</button>
           <button id="loadCompanies" class="secondary">Listar empresas</button>
           <button id="runSimulation" class="warn">Teste simulado</button>
         </div>
-        <div class="hint">Use <strong>STUB</strong> no `application.yml` para testes sem certificado. O botão de teste simulado cria uma empresa fake e emite uma NFC-e automaticamente.</div>
+        <div class="hint">Use <strong>STUB</strong> para testes sem certificado. Se o JWT estiver ativo, use <strong>Gerar JWT dev</strong> antes de chamar a API.</div>
       </div>
 
       <h3>Empresas</h3>
@@ -452,6 +456,19 @@
       return $("#apiKey").value;
     }
 
+    function jwtToken() {
+      return $("#jwtToken").value.trim().replace(/^Bearer\s+/i, "");
+    }
+
+    function authHeaders() {
+      const token = jwtToken();
+      return {
+        "Content-Type": "application/json",
+        "X-API-Key": apiKey(),
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      };
+    }
+
     function log(value) {
       output.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
     }
@@ -460,8 +477,7 @@
       const response = await fetch(baseUrl() + path, {
         ...options,
         headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey(),
+          ...authHeaders(),
           ...(options.headers || {})
         }
       });
@@ -643,7 +659,32 @@
     $("#saveSettings").addEventListener("click", () => {
       localStorage.setItem("fiscal-dev-base-url", $("#baseUrl").value);
       localStorage.setItem("fiscal-dev-api-key", $("#apiKey").value);
+      localStorage.setItem("fiscal-dev-jwt", $("#jwtToken").value);
       log("Configurações salvas no navegador.");
+    });
+
+    $("#generateJwt").addEventListener("click", async () => {
+      try {
+        const response = await fetch(baseUrl() + "/dev/jwt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subject: "dev-console",
+            tenantId: "tenant-dev",
+            scopes: ["fiscal:admin"],
+            expiresInMinutes: 60
+          })
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          throw new Error(JSON.stringify(body));
+        }
+        $("#jwtToken").value = body.accessToken;
+        localStorage.setItem("fiscal-dev-jwt", body.accessToken);
+        log(body);
+      } catch (error) {
+        log(error.message);
+      }
     });
 
     $("#loadCompanies").addEventListener("click", async () => {
@@ -765,6 +806,7 @@
     function boot() {
       $("#baseUrl").value = localStorage.getItem("fiscal-dev-base-url") || window.location.origin;
       $("#apiKey").value = localStorage.getItem("fiscal-dev-api-key") || "change-me";
+      $("#jwtToken").value = localStorage.getItem("fiscal-dev-jwt") || "";
       $("#externalReference").value = `PEDIDO-${Date.now()}`;
     }
 
