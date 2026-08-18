@@ -37,6 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         return !properties.getSecurity().getJwt().isEnabled()
             || path.startsWith("/actuator/health")
+            || path.equals("/api/v1/auth/token")
             || (properties.getDevConsole().isEnabled() && path.startsWith("/dev"))
             || (properties.getOpenApi().isPublicAccess()
                 && (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")));

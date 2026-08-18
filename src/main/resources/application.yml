@@ -59,6 +59,11 @@ app:
       secret: ${JWT_SECRET:dev-only-jwt-secret-change-before-production}
       issuer: ${JWT_ISSUER:fiscal-platform}
       audience: ${JWT_AUDIENCE:fiscal-api}
+    integration-client:
+      username: ${AUTH_USERNAME:dev-client}
+      password: ${AUTH_PASSWORD:dev-password-change-me}
+      default-scopes: ${AUTH_DEFAULT_SCOPES:fiscal:admin}
+      token-ttl-minutes: ${AUTH_TOKEN_TTL_MINUTES:60}
   fiscal:
     provider: ${FISCAL_PROVIDER:STUB}
     stub-online: ${FISCAL_STUB_ONLINE:true}
@@ -122,6 +127,11 @@ app:
       secret: ${JWT_SECRET}
       issuer: ${JWT_ISSUER:fiscal-platform}
       audience: ${JWT_AUDIENCE:fiscal-api}
+    integration-client:
+      username: ${AUTH_USERNAME}
+      password: ${AUTH_PASSWORD}
+      default-scopes: ${AUTH_DEFAULT_SCOPES}
+      token-ttl-minutes: ${AUTH_TOKEN_TTL_MINUTES:60}
   fiscal:
     provider: ${FISCAL_PROVIDER:LIBRARY}
     stub-online: false

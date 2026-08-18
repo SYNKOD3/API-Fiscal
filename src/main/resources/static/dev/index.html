@@ -309,6 +309,12 @@
         <label>API key
           <input id="apiKey" value="change-me" type="password">
         </label>
+        <label>Usuário token
+          <input id="authUsername" value="dev-client">
+        </label>
+        <label>Senha token
+          <input id="authPassword" value="dev-password-change-me" type="password">
+        </label>
         <label>JWT dev opcional
           <textarea id="jwtToken" placeholder="Clique em Gerar JWT dev ou cole um token Bearer aqui"></textarea>
         </label>
@@ -659,16 +665,20 @@
     $("#saveSettings").addEventListener("click", () => {
       localStorage.setItem("fiscal-dev-base-url", $("#baseUrl").value);
       localStorage.setItem("fiscal-dev-api-key", $("#apiKey").value);
+      localStorage.setItem("fiscal-dev-auth-username", $("#authUsername").value);
+      localStorage.setItem("fiscal-dev-auth-password", $("#authPassword").value);
       localStorage.setItem("fiscal-dev-jwt", $("#jwtToken").value);
       log("Configurações salvas no navegador.");
     });
 
     $("#generateJwt").addEventListener("click", async () => {
       try {
-        const response = await fetch(baseUrl() + "/dev/jwt", {
+        const response = await fetch(baseUrl() + "/api/v1/auth/token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            username: $("#authUsername").value,
+            password: $("#authPassword").value,
             subject: "dev-console",
             tenantId: "tenant-dev",
             scopes: ["fiscal:admin"],
@@ -806,6 +816,8 @@
     function boot() {
       $("#baseUrl").value = localStorage.getItem("fiscal-dev-base-url") || window.location.origin;
       $("#apiKey").value = localStorage.getItem("fiscal-dev-api-key") || "change-me";
+      $("#authUsername").value = localStorage.getItem("fiscal-dev-auth-username") || "dev-client";
+      $("#authPassword").value = localStorage.getItem("fiscal-dev-auth-password") || "dev-password-change-me";
       $("#jwtToken").value = localStorage.getItem("fiscal-dev-jwt") || "";
       $("#externalReference").value = `PEDIDO-${Date.now()}`;
     }

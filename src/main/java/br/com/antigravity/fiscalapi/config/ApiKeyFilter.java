@@ -27,6 +27,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         return path.startsWith("/actuator/health")
+            || path.equals("/api/v1/auth/token")
             || (properties.getDevConsole().isEnabled() && path.startsWith("/dev"))
             || (properties.getOpenApi().isPublicAccess()
                 && (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs")));

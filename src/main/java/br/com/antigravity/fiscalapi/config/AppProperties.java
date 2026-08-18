@@ -41,6 +41,7 @@ public class AppProperties {
     public static class Security {
         private String apiKey = "change-me";
         private final Jwt jwt = new Jwt();
+        private final IntegrationClient integrationClient = new IntegrationClient();
 
         public String getApiKey() {
             return apiKey;
@@ -52,6 +53,10 @@ public class AppProperties {
 
         public Jwt getJwt() {
             return jwt;
+        }
+
+        public IntegrationClient getIntegrationClient() {
+            return integrationClient;
         }
     }
 
@@ -91,6 +96,45 @@ public class AppProperties {
 
         public void setAudience(String audience) {
             this.audience = audience;
+        }
+    }
+
+    public static class IntegrationClient {
+        private String username = "dev-client";
+        private String password = "dev-password-change-me";
+        private Set<String> defaultScopes = new HashSet<>(Set.of("fiscal:admin"));
+        private int tokenTtlMinutes = 60;
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public Set<String> getDefaultScopes() {
+            return defaultScopes;
+        }
+
+        public void setDefaultScopes(Set<String> defaultScopes) {
+            this.defaultScopes = defaultScopes == null ? new HashSet<>() : defaultScopes;
+        }
+
+        public int getTokenTtlMinutes() {
+            return tokenTtlMinutes;
+        }
+
+        public void setTokenTtlMinutes(int tokenTtlMinutes) {
+            this.tokenTtlMinutes = tokenTtlMinutes;
         }
     }
 

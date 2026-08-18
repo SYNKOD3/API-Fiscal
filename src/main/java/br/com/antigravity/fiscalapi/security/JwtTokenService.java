@@ -83,7 +83,7 @@ public class JwtTokenService {
         Map<String, Object> claims = new LinkedHashMap<>();
         claims.put("iss", properties.getSecurity().getJwt().getIssuer());
         claims.put("aud", properties.getSecurity().getJwt().getAudience());
-        claims.put("sub", hasText(subject) ? subject : "dev-console");
+        claims.put("sub", hasText(subject) ? subject : "integration-client");
         claims.put("jti", UUID.randomUUID().toString());
         if (hasText(tenantId)) {
             claims.put("tenantId", tenantId);

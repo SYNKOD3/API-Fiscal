@@ -19,6 +19,12 @@ public class GlobalExceptionHandler {
         return error(request, "bad_request", ex.getMessage());
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiError unauthorized(UnauthorizedException ex, HttpServletRequest request) {
+        return error(request, "unauthorized", ex.getMessage());
+    }
+
     @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiError notFound(NotFoundException ex, HttpServletRequest request) {

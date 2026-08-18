@@ -34,6 +34,10 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_ISSUER: ${JWT_ISSUER:-fiscal-platform}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-fiscal-api}
+      AUTH_USERNAME: ${AUTH_USERNAME}
+      AUTH_PASSWORD: ${AUTH_PASSWORD}
+      AUTH_DEFAULT_SCOPES: ${AUTH_DEFAULT_SCOPES:-fiscal:companies:write,fiscal:companies:read,fiscal:certificates:write,fiscal:certificates:read,fiscal:documents:issue,fiscal:documents:retry,fiscal:documents:read,fiscal:audit:read,fiscal:logs:read,fiscal:sefaz:read}
+      AUTH_TOKEN_TTL_MINUTES: ${AUTH_TOKEN_TTL_MINUTES:-60}
       FISCAL_PROVIDER: ${FISCAL_PROVIDER:-LIBRARY}
       FISCAL_UNAVAILABLE_STATES: ${FISCAL_UNAVAILABLE_STATES:-}
       CERTIFICATE_STORAGE_PATH: ${CERTIFICATE_STORAGE_PATH:-/var/lib/fiscal-api/certificates}

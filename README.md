@@ -103,6 +103,10 @@ JWT_AUTH_ENABLED=true
 JWT_SECRET=chave-jwt-com-pelo-menos-32-caracteres
 JWT_ISSUER=fiscal-platform
 JWT_AUDIENCE=fiscal-api
+AUTH_USERNAME=usuario-da-integracao
+AUTH_PASSWORD=senha-forte-da-integracao-com-mais-de-24-caracteres
+AUTH_DEFAULT_SCOPES=fiscal:companies:write,fiscal:companies:read,fiscal:certificates:write,fiscal:certificates:read,fiscal:documents:issue,fiscal:documents:retry,fiscal:documents:read,fiscal:audit:read,fiscal:logs:read,fiscal:sefaz:read
+AUTH_TOKEN_TTL_MINUTES=60
 FISCAL_PROVIDER=LIBRARY
 CERTIFICATE_STORAGE_PATH=/var/lib/fiscal-api/certificates
 APP_DEV_CONSOLE_ENABLED=false
@@ -142,6 +146,10 @@ Invoke-WebRequest http://localhost:8081/actuator/health
 | `JWT_SECRET` | Sim | Chave usada para validar JWT HS256. |
 | `JWT_ISSUER` | Sim | Emissor esperado no claim `iss`. |
 | `JWT_AUDIENCE` | Sim | Audiência esperada no claim `aud`. |
+| `AUTH_USERNAME` | Sim | Usuário da integração usado para gerar token na Fiscal API. |
+| `AUTH_PASSWORD` | Sim | Senha forte da integração usada para gerar token na Fiscal API. |
+| `AUTH_DEFAULT_SCOPES` | Sim | Escopos máximos permitidos para tokens emitidos pela Fiscal API. |
+| `AUTH_TOKEN_TTL_MINUTES` | Não | Tempo máximo de validade dos tokens emitidos pela Fiscal API. |
 | `FISCAL_PROVIDER` | Sim | `STUB` para simulação ou `LIBRARY` para integração fiscal real. |
 | `FISCAL_UNAVAILABLE_STATES` | Não | Lista de UFs simuladas como indisponíveis, exemplo: `BA,SP`. |
 | `CERTIFICATE_STORAGE_PATH` | Sim | Diretório privado e persistente para certificados A1. |
@@ -152,16 +160,60 @@ Invoke-WebRequest http://localhost:8081/actuator/health
 
 ## Autenticação
 
-Em produção, cada chamada protegida deve enviar:
+Em produção, o integrador não precisa gerar JWT nem conhecer `JWT_SECRET`. A Fiscal API possui um endpoint próprio para autenticação com usuário e senha da integração.
+
+Gerar token:
+
+```http
+POST /api/v1/auth/token
+Content-Type: application/json
+```
+
+```json
+{
+  "username": "usuario-da-integracao",
+  "password": "senha-forte-da-integracao",
+  "subject": "integrador-backend",
+  "tenantId": "tenant-001",
+  "merchantId": "merchant-001",
+  "scopes": [
+    "fiscal:documents:issue",
+    "fiscal:documents:read"
+  ],
+  "expiresInMinutes": 60
+}
+```
+
+Resposta:
+
+```json
+{
+  "data": {
+    "accessToken": "JWT_GERADO_PELA_FISCAL_API",
+    "tokenType": "Bearer",
+    "expiresInSeconds": 3600,
+    "headerName": "Authorization",
+    "headerValue": "Bearer JWT_GERADO_PELA_FISCAL_API"
+  }
+}
+```
+
+Também é possível enviar as credenciais do token endpoint com Basic Auth:
+
+```http
+Authorization: Basic base64(username:password)
+```
+
+Depois de obter o token, cada chamada protegida deve enviar:
 
 ```http
 X-API-Key: chave-forte-da-api
-Authorization: Bearer <jwt>
+Authorization: Bearer JWT_GERADO_PELA_FISCAL_API
 ```
 
-A API key identifica a integração. O JWT autoriza a ação, os escopos e o vínculo com `tenantId` e `merchantId`.
+A API key identifica a instalação/integração. O Bearer token autoriza a ação, os escopos e o vínculo com `tenantId` e `merchantId`.
 
-A API não depende de uma plataforma específica para funcionar. Os campos `tenantId` e `merchantId` são identificadores genéricos da plataforma que estiver integrando. Cada integrador pode usar seus próprios IDs, desde que o JWT enviado seja assinado com o segredo configurado na Fiscal API.
+A API não depende de uma plataforma específica para funcionar. Os campos `tenantId` e `merchantId` são identificadores genéricos do sistema que estiver integrando.
 
 Exemplo de payload JWT:
 
@@ -182,7 +234,7 @@ Exemplo de payload JWT:
 }
 ```
 
-Regras:
+Regras do token:
 
 - O algoritmo aceito é `HS256`.
 - `iss` deve bater com `JWT_ISSUER`.
@@ -190,6 +242,7 @@ Regras:
 - `exp` é obrigatório e deve estar no futuro.
 - Tokens com `tenantId` ou `merchantId` ficam restritos ao respectivo lojista.
 - O escopo `fiscal:admin` libera todos os endpoints protegidos.
+- O integrador só pode solicitar escopos presentes em `AUTH_DEFAULT_SCOPES`.
 
 Escopos disponíveis:
 
@@ -220,21 +273,23 @@ Nesse modo, basta enviar a API key:
 X-API-Key: change-me
 ```
 
-Para testar o fluxo com JWT ativado, habilite:
+Para testar o fluxo com token ativado, habilite:
 
 ```env
 JWT_AUTH_ENABLED=true
 ```
 
-Com o console dev habilitado, gere um token de teste pelo endpoint:
+Com o console dev habilitado, gere um token de teste pelo endpoint oficial:
 
 ```http
-POST /dev/jwt
+POST /api/v1/auth/token
 Content-Type: application/json
 ```
 
 ```json
 {
+  "username": "dev-client",
+  "password": "dev-password-change-me",
   "subject": "dev-console",
   "tenantId": "tenant-dev",
   "merchantId": "merchant-dev",

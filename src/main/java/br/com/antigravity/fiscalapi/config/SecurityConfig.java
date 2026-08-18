@@ -23,6 +23,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers("/actuator/health").permitAll();
+                auth.requestMatchers("/api/v1/auth/token").permitAll();
                 if (properties.getDevConsole().isEnabled()) {
                     auth.requestMatchers("/dev/**").permitAll();
                 }

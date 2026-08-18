@@ -12,6 +12,8 @@ public class ProductionReadinessValidator implements ApplicationRunner {
     private static final String DEV_API_KEY = "change-me";
     private static final String DEV_SECRETS_KEY = "dev-insecure-change-me";
     private static final String DEV_JWT_SECRET = "dev-only-jwt-secret-change-before-production";
+    private static final String DEV_AUTH_USERNAME = "dev-client";
+    private static final String DEV_AUTH_PASSWORD = "dev-password-change-me";
 
     private final AppProperties properties;
     private final Environment environment;
@@ -29,6 +31,7 @@ public class ProductionReadinessValidator implements ApplicationRunner {
 
         requireStrongApiKey();
         requireJwt();
+        requireIntegrationClientCredentials();
         requireSecretsKey();
         requireLibraryProvider();
         requirePrivateDevTools();
@@ -71,6 +74,21 @@ public class ProductionReadinessValidator implements ApplicationRunner {
         }
         if (jwt.getAudience() == null || jwt.getAudience().isBlank()) {
             throw new IllegalStateException("Producao exige JWT_AUDIENCE configurado.");
+        }
+    }
+
+    private void requireIntegrationClientCredentials() {
+        AppProperties.IntegrationClient integrationClient = properties.getSecurity().getIntegrationClient();
+        String username = integrationClient.getUsername();
+        String password = integrationClient.getPassword();
+        if (username == null || username.isBlank() || DEV_AUTH_USERNAME.equals(username)) {
+            throw new IllegalStateException("Produção exige AUTH_USERNAME configurado.");
+        }
+        if (password == null || password.isBlank() || DEV_AUTH_PASSWORD.equals(password) || password.length() < 24) {
+            throw new IllegalStateException("Produção exige AUTH_PASSWORD forte com pelo menos 24 caracteres.");
+        }
+        if (integrationClient.getDefaultScopes().isEmpty()) {
+            throw new IllegalStateException("Produção exige AUTH_DEFAULT_SCOPES configurado.");
         }
     }
 
