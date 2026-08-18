@@ -25,7 +25,12 @@ public class AuthController {
     @ResponseStatus(HttpStatus.OK)
     @Operation(
         summary = "Gerar token de acesso",
-        description = "Recebe credenciais da integração e retorna um Bearer token emitido pela própria API Fiscal."
+        description = """
+            Recebe credenciais da integração e retorna um Bearer token emitido pela própria API Fiscal.
+
+            No Swagger, execute este endpoint primeiro. Depois copie `data.accessToken`, clique em `Authorize`,
+            informe a API key em `Chave da API` e cole o token em `JWT Integrador`.
+            """
     )
     public ApiEnvelope<TokenResponse> token(@RequestBody(required = false) TokenRequest request,
                                             HttpServletRequest servletRequest) {

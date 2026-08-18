@@ -7,6 +7,8 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.tags.Tag;
+import java.util.List;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,6 +17,7 @@ public class OpenApiConfig {
 
     private static final String API_KEY_SCHEME = "Chave da API";
     private static final String JWT_SCHEME = "JWT Integrador";
+    private static final String TOKEN_PATH = "/api/v1/auth/token";
 
     @Bean
     OpenAPI fiscalOpenApi() {
@@ -25,8 +28,23 @@ public class OpenApiConfig {
                 .description("""
                     API para emissão de NF-e e NFC-e em ambiente multiempresa, com contingência local,
                     armazenamento de XML/comprovante e reprocessamento automático quando a SEFAZ voltar.
+
+                    ## Como testar pelo Swagger
+
+                    1. Abra `Autenticação > POST /api/v1/auth/token`.
+                    2. Clique em `Try it out` e execute com `username` e `password` da integração.
+                    3. Copie o campo `data.accessToken` da resposta.
+                    4. Clique no botão `Authorize` no topo do Swagger.
+                    5. Em `Chave da API`, informe a API key.
+                    6. Em `JWT Integrador`, cole somente o token, sem escrever `Bearer`.
+                    7. Execute os endpoints protegidos normalmente pelo próprio Swagger.
+
+                    Em ambiente local, os valores padrão são `change-me`, `dev-client` e `dev-password-change-me`.
                     """)
                 .contact(new Contact().name("Antigravity")))
+            .addTagsItem(new Tag()
+                .name("Autenticação")
+                .description("Geração de token Bearer pela própria API Fiscal. Use este endpoint primeiro no Swagger."))
             .addTagsItem(new Tag()
                 .name("Empresas")
                 .description("Cadastro e consulta de empresas emissoras."))
@@ -55,7 +73,17 @@ public class OpenApiConfig {
                     .type(SecurityScheme.Type.HTTP)
                     .scheme("bearer")
                     .bearerFormat("JWT")
-                    .description("Informe o JWT curto emitido pelo backend integrador.")))
-            .addSecurityItem(new SecurityRequirement().addList(API_KEY_SCHEME).addList(JWT_SCHEME));
+                    .description("Cole somente o accessToken retornado por POST /api/v1/auth/token. Não inclua a palavra Bearer.")));
+    }
+
+    @Bean
+    OpenApiCustomizer protectedEndpointsSecurityCustomizer() {
+        return openApi -> openApi.getPaths().forEach((path, pathItem) -> pathItem.readOperations().forEach(operation -> {
+            if (TOKEN_PATH.equals(path)) {
+                operation.setSecurity(List.of());
+                return;
+            }
+            operation.addSecurityItem(new SecurityRequirement().addList(API_KEY_SCHEME).addList(JWT_SCHEME));
+        }));
     }
 }

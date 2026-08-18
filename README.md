@@ -85,6 +85,53 @@ Console dev:
 http://localhost:8081/dev/index.html
 ```
 
+## Teste Pelo Swagger
+
+Para testar tudo pelo Swagger, abra:
+
+```text
+http://localhost:8081/swagger-ui/index.html
+```
+
+Em ambiente local com JWT desativado, clique em `Authorize`, preencha apenas:
+
+```text
+Chave da API: change-me
+```
+
+Depois execute `Empresas > POST /api/v1/companies` e, em seguida, `Documentos fiscais > POST /api/v1/documents`.
+
+Em ambiente com JWT ativado, faça primeiro:
+
+```text
+Autenticação > POST /api/v1/auth/token
+```
+
+Use este body para teste local:
+
+```json
+{
+  "username": "dev-client",
+  "password": "dev-password-change-me",
+  "subject": "swagger-local",
+  "tenantId": "tenant-dev",
+  "merchantId": "merchant-dev",
+  "scopes": [
+    "fiscal:admin"
+  ],
+  "expiresInMinutes": 60
+}
+```
+
+Copie `data.accessToken`, clique em `Authorize` e preencha:
+
+```text
+Chave da API: change-me
+JWT Integrador: cole somente o accessToken, sem Bearer
+```
+
+Depois execute os endpoints protegidos pelo próprio Swagger. Para teste sem certificado e sem SEFAZ real, mantenha `FISCAL_PROVIDER=STUB`.
+
 ## Configuração de Produção
 
 Crie o arquivo `.env` a partir do modelo:
@@ -172,7 +219,7 @@ Content-Type: application/json
 ```json
 {
   "username": "usuario-da-integracao",
-  "password": "senha-forte-da-integracao",
+  "password": "senha-forte-da-integracao-com-mais-de-24-caracteres",
   "subject": "integrador-backend",
   "tenantId": "tenant-001",
   "merchantId": "merchant-001",
