@@ -10,7 +10,7 @@ public record CreateCompanyRequest(
     String tenantId,
     @Schema(description = "Identificador do lojista/empresa na plataforma integradora.", example = "merchant-dev")
     String merchantId,
-    @Schema(description = "URL de callback para eventos fiscais.", example = "https://integrador.example.com/webhooks/fiscal")
+    @Schema(description = "URL de callback para buscar certificado remoto quando o integrador mantém o A1 fora da API Fiscal.", example = "https://integrador.example.com/api/integracoes/fiscal/certificado")
     String callbackUrl,
     @Schema(description = "Razão social da empresa emissora.", example = "Empresa Exemplo LTDA")
     @NotBlank String legalName,

@@ -225,6 +225,7 @@ public class AppProperties {
     public static class Certificates {
         private String storagePath = "certificates";
         private long maxSizeBytes = 5242880;
+        private String remoteAuthToken = "";
 
         public String getStoragePath() {
             return storagePath;
@@ -240,6 +241,14 @@ public class AppProperties {
 
         public void setMaxSizeBytes(long maxSizeBytes) {
             this.maxSizeBytes = maxSizeBytes;
+        }
+
+        public String getRemoteAuthToken() {
+            return remoteAuthToken;
+        }
+
+        public void setRemoteAuthToken(String remoteAuthToken) {
+            this.remoteAuthToken = remoteAuthToken;
         }
     }
 

@@ -6,9 +6,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,6 +38,19 @@ public class CompanyController {
     public ApiEnvelope<CompanyResponse> create(@Valid @RequestBody CreateCompanyRequest request,
                                                HttpServletRequest servletRequest) {
         CompanyResponse response = companyService.create(request);
+        OperationalRequestContext.attachCompany(servletRequest, response.id());
+        return ApiEnvelope.of(response);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(
+        summary = "Atualizar empresa emissora",
+        description = "Atualiza dados fiscais, numeração, ambiente, CSC e callback de certificado de uma empresa emissora ja cadastrada."
+    )
+    public ApiEnvelope<CompanyResponse> update(@PathVariable UUID id,
+                                               @Valid @RequestBody CreateCompanyRequest request,
+                                               HttpServletRequest servletRequest) {
+        CompanyResponse response = companyService.update(id, request);
         OperationalRequestContext.attachCompany(servletRequest, response.id());
         return ApiEnvelope.of(response);
     }

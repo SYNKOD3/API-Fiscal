@@ -1,6 +1,7 @@
 package br.com.antigravity.fiscalapi.fiscal;
 
-import br.com.antigravity.fiscalapi.certificate.CompanyCertificateService;
+import br.com.antigravity.fiscalapi.certificate.CertificateCredentialResolver;
+import br.com.antigravity.fiscalapi.certificate.CertificateCredentials;
 import br.com.antigravity.fiscalapi.config.AppProperties;
 import br.com.antigravity.fiscalapi.company.Company;
 import br.com.antigravity.fiscalapi.company.CompanyRepository;
@@ -26,7 +27,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
     private final JavaNfeMapper javaNfeMapper;
     private final JavaNfeConfigurationFactory javaNfeConfigurationFactory;
     private final SefazRouter sefazRouter;
-    private final CompanyCertificateService certificateService;
+    private final CertificateCredentialResolver certificateCredentialResolver;
 
     public LibraryFiscalGateway(AppProperties properties,
                                 CompanyRepository companyRepository,
@@ -35,7 +36,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
                                 JavaNfeMapper javaNfeMapper,
                                 JavaNfeConfigurationFactory javaNfeConfigurationFactory,
                                 SefazRouter sefazRouter,
-                                CompanyCertificateService certificateService) {
+                                CertificateCredentialResolver certificateCredentialResolver) {
         this.properties = properties;
         this.companyRepository = companyRepository;
         this.fiscalXmlBuilder = fiscalXmlBuilder;
@@ -43,7 +44,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
         this.javaNfeMapper = javaNfeMapper;
         this.javaNfeConfigurationFactory = javaNfeConfigurationFactory;
         this.sefazRouter = sefazRouter;
-        this.certificateService = certificateService;
+        this.certificateCredentialResolver = certificateCredentialResolver;
     }
 
     @Override
@@ -65,15 +66,19 @@ public class LibraryFiscalGateway implements FiscalGateway {
         FiscalXmlDraft draft = fiscalXmlBuilder.build(submission);
         TEnviNFe enviNFe = javaNfeMapper.toEnviNFe(draft);
         String xmlPreview = fiscalXmlPreviewRenderer.render(draft);
-        ConfiguracoesNfe config = javaNfeConfigurationFactory.create(company);
-
-        TEnviNFe signedEnvelope = sign(config, enviNFe, xmlPreview);
-        TRetEnviNFe response = send(config, signedEnvelope, submission.model());
-        return toSubmissionResult(response);
+        CertificateCredentials credentials = certificateCredentialResolver.resolve(company);
+        try {
+            ConfiguracoesNfe config = javaNfeConfigurationFactory.create(company, credentials);
+            TEnviNFe signedEnvelope = sign(config, enviNFe, xmlPreview);
+            TRetEnviNFe response = send(config, signedEnvelope, submission.model());
+            return toSubmissionResult(response);
+        } finally {
+            credentials.cleanup();
+        }
     }
 
     private void validateFiscalConfiguration(Company company) {
-        if (!certificateService.hasCertificateForEmission(company)) {
+        if (!certificateCredentialResolver.hasResolvableCertificate(company)) {
             throw new FiscalGatewayException("Certificado digital da empresa nao configurado", false);
         }
     }

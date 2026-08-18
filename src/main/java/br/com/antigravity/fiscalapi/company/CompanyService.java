@@ -78,6 +78,60 @@ public class CompanyService {
         return response(saved);
     }
 
+    @Transactional
+    public CompanyResponse update(UUID id, CreateCompanyRequest request) {
+        Company company = companyRepository.findByIdForUpdate(id)
+            .orElseThrow(() -> new NotFoundException("Empresa nao encontrada"));
+        jwtSecurityContext.requireCompanyAccess(company);
+        jwtSecurityContext.requireTenantAccess(request.tenantId(), request.merchantId());
+
+        companyRepository.findByTaxId(request.taxId())
+            .filter(existing -> !existing.getId().equals(id))
+            .ifPresent(existing -> {
+                throw new ConflictException("Empresa ja cadastrada para este CNPJ");
+            });
+
+        if (hasText(request.tenantId()) && hasText(request.merchantId())) {
+            companyRepository.findByTenantIdAndMerchantId(
+                request.tenantId(),
+                request.merchantId()
+            ).filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new ConflictException("Merchant já vinculado a outra empresa emissora");
+                });
+        }
+
+        company.updateFiscalData(
+            request.legalName(),
+            request.tenantId(),
+            request.merchantId(),
+            request.callbackUrl(),
+            request.taxId(),
+            request.stateRegistration(),
+            request.stateCode(),
+            request.tradeName(),
+            request.street(),
+            request.addressNumber(),
+            request.addressComplement(),
+            request.district(),
+            request.cityCode(),
+            request.cityName(),
+            request.zipCode(),
+            request.phone(),
+            request.taxRegime(),
+            request.fiscalEnvironment(),
+            request.cscId(),
+            request.cscToken(),
+            request.nfeSeriesNumber(),
+            request.nextNfeNumber(),
+            request.nfceSeriesNumber(),
+            request.nextNfceNumber()
+        );
+        Company saved = companyRepository.save(company);
+        auditService.record(saved.getId(), null, "COMPANY_UPDATED", "Empresa emissora atualizada", saved.getTaxId());
+        return response(saved);
+    }
+
     @Transactional(readOnly = true)
     public List<CompanyResponse> list(String tenantId) {
         String constrainedTenant = jwtSecurityContext.constrainedTenant(tenantId);

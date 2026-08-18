@@ -137,6 +137,7 @@ AUTH_DEFAULT_SCOPES=fiscal:companies:write,fiscal:companies:read,fiscal:certific
 AUTH_TOKEN_TTL_MINUTES=60
 FISCAL_PROVIDER=LIBRARY
 CERTIFICATE_STORAGE_PATH=/var/lib/fiscal-api/certificates
+CERTIFICATE_REMOTE_AUTH_TOKEN=token-forte-compartilhado-com-o-integrador
 APP_DEV_CONSOLE_ENABLED=false
 OPENAPI_ENABLED=false
 OPENAPI_PUBLIC_ACCESS=false
@@ -183,6 +184,7 @@ Invoke-WebRequest http://localhost:8081/actuator/health
 | `FISCAL_UNAVAILABLE_STATES` | Não | Lista de UFs simuladas como indisponíveis, exemplo: `BA,SP`. |
 | `CERTIFICATE_STORAGE_PATH` | Sim | Diretório privado e persistente para certificados A1. |
 | `CERTIFICATE_MAX_SIZE_BYTES` | Não | Tamanho máximo do certificado enviado. |
+| `CERTIFICATE_REMOTE_AUTH_TOKEN` | Não | Token usado para buscar certificado em uma plataforma integradora quando o certificado não é salvo na API Fiscal. Obrigatório para empresas com `callbackUrl` de certificado. |
 | `APP_DEV_CONSOLE_ENABLED` | Sim | Deve ser `false` em produção. |
 | `OPENAPI_ENABLED` | Sim | Deve ser `false` em produção, salvo necessidade controlada. |
 | `OPENAPI_PUBLIC_ACCESS` | Sim | Deve ser `false` em produção. |
@@ -371,7 +373,12 @@ Campos importantes:
 
 ## Upload de Certificado A1
 
-O certificado A1 é vinculado à empresa emissora. Cada empresa pode ter um certificado ativo.
+A API suporta dois modelos de certificado A1 por empresa emissora:
+
+- Certificado gerenciado pela API Fiscal: upload do `.pfx/.p12` neste endpoint.
+- Certificado gerenciado pelo integrador: a empresa é cadastrada com `callbackUrl`, e a API busca o certificado nesse callback sempre que precisar assinar, inclusive no retry automático.
+
+No modelo gerenciado pela API Fiscal, cada empresa pode ter um certificado ativo.
 
 Endpoint:
 
@@ -414,6 +421,39 @@ Comportamento:
 - Se o CNPJ extraído for diferente do CNPJ da empresa, o upload é recusado.
 - Se não for possível extrair o CNPJ em formato textual, o upload pode ser aceito após validar senha e validade.
 - Ao enviar um novo certificado, o certificado anterior é marcado como `REPLACED`.
+
+### Certificado via callback do integrador
+
+Use este modelo quando o certificado precisa ficar no sistema integrador. A empresa deve ser cadastrada ou atualizada com `callbackUrl` apontando para um endpoint interno do integrador.
+
+Quando não houver certificado salvo localmente para a empresa, a API Fiscal fará:
+
+```http
+POST {callbackUrl}
+X-Fiscal-Certificate-Token: valor-de-CERTIFICATE_REMOTE_AUTH_TOKEN
+Content-Type: application/json
+
+{
+  "tenantId": "integrador",
+  "merchantId": "loja-123",
+  "taxId": "12345678000199"
+}
+```
+
+Resposta esperada:
+
+```json
+{
+  "data": {
+    "certificateBase64": "BASE64_DO_PFX_OU_P12",
+    "password": "senha-do-certificado",
+    "originalFileName": "empresa.pfx",
+    "taxId": "12345678000199"
+  }
+}
+```
+
+O arquivo recebido é gravado apenas em arquivo temporário durante a assinatura/envio e removido ao fim da tentativa.
 
 ## Emissão de Documento Fiscal
 
@@ -672,6 +712,7 @@ java -jar target/fiscal-api-0.0.1-SNAPSHOT.jar
 | Método | Endpoint | Descrição |
 | --- | --- | --- |
 | `POST` | `/api/v1/companies` | Cadastra empresa emissora. |
+| `PUT` | `/api/v1/companies/{id}` | Atualiza empresa emissora. |
 | `GET` | `/api/v1/companies` | Lista empresas. |
 | `POST` | `/api/v1/companies/{companyId}/certificates` | Envia certificado A1. |
 | `GET` | `/api/v1/companies/{companyId}/certificates` | Lista certificados da empresa. |

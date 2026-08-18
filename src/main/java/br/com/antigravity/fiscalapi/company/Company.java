@@ -163,6 +163,57 @@ public class Company {
         return company;
     }
 
+    public void updateFiscalData(String legalName,
+                                 String tenantId,
+                                 String merchantId,
+                                 String callbackUrl,
+                                 String taxId,
+                                 String stateRegistration,
+                                 String stateCode,
+                                 String tradeName,
+                                 String street,
+                                 String addressNumber,
+                                 String addressComplement,
+                                 String district,
+                                 String cityCode,
+                                 String cityName,
+                                 String zipCode,
+                                 String phone,
+                                 TaxRegime taxRegime,
+                                 FiscalEnvironment fiscalEnvironment,
+                                 String cscId,
+                                 String cscToken,
+                                 Integer nfeSeriesNumber,
+                                 Long nextNfeNumber,
+                                 Integer nfceSeriesNumber,
+                                 Long nextNfceNumber) {
+        this.tenantId = tenantId;
+        this.merchantId = merchantId;
+        this.callbackUrl = callbackUrl;
+        this.legalName = legalName;
+        this.taxId = taxId;
+        this.stateRegistration = stateRegistration;
+        this.stateCode = stateCode;
+        this.tradeName = tradeName;
+        this.street = street;
+        this.addressNumber = addressNumber;
+        this.addressComplement = addressComplement;
+        this.district = district;
+        this.cityCode = cityCode;
+        this.cityName = cityName;
+        this.zipCode = zipCode;
+        this.phone = phone;
+        this.taxRegime = taxRegime == null ? TaxRegime.SIMPLES_NACIONAL : taxRegime;
+        this.fiscalEnvironment = fiscalEnvironment == null ? FiscalEnvironment.HOMOLOGATION : fiscalEnvironment;
+        this.cscId = cscId;
+        this.cscToken = cscToken;
+        this.nfeSeriesNumber = nfeSeriesNumber == null ? this.nfeSeriesNumber : nfeSeriesNumber;
+        this.nextNfeNumber = nextNfeNumber == null ? this.nextNfeNumber : nextNfeNumber;
+        this.nfceSeriesNumber = nfceSeriesNumber == null ? this.nfceSeriesNumber : nfceSeriesNumber;
+        this.nextNfceNumber = nextNfceNumber == null ? this.nextNfceNumber : nextNfceNumber;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
     public UUID getId() {
         return id;
     }

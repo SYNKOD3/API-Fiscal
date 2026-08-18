@@ -99,7 +99,8 @@ public class CompanyCertificateService {
             .map(certificate -> new CertificateCredentials(
                 certificate.getStoragePath(),
                 certificate.getCertificatePassword(),
-                true
+                true,
+                false
             ))
             .orElseGet(() -> legacyCredentials(company));
     }
@@ -112,7 +113,7 @@ public class CompanyCertificateService {
 
     private CertificateCredentials legacyCredentials(Company company) {
         if (hasText(company.getCertificatePath()) && hasText(company.getCertificatePassword())) {
-            return new CertificateCredentials(company.getCertificatePath(), company.getCertificatePassword(), false);
+            return CertificateCredentials.stored(company.getCertificatePath(), company.getCertificatePassword(), false);
         }
         throw new BadRequestException("Certificado digital da empresa nao configurado");
     }

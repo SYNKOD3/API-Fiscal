@@ -82,6 +82,7 @@ app:
   certificates:
     storage-path: ${CERTIFICATE_STORAGE_PATH:certificates}
     max-size-bytes: ${CERTIFICATE_MAX_SIZE_BYTES:5242880}
+    remote-auth-token: ${CERTIFICATE_REMOTE_AUTH_TOKEN:}
 
 logging:
   level:
@@ -154,6 +155,7 @@ app:
   certificates:
     storage-path: ${CERTIFICATE_STORAGE_PATH:/var/lib/fiscal-api/certificates}
     max-size-bytes: ${CERTIFICATE_MAX_SIZE_BYTES:5242880}
+    remote-auth-token: ${CERTIFICATE_REMOTE_AUTH_TOKEN:}
 
 server:
   error:
