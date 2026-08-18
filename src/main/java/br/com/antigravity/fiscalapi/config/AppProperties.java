@@ -39,10 +39,19 @@ public class AppProperties {
     }
 
     public static class Security {
+        private boolean basicAuthEnabled = true;
         private boolean apiKeyEnabled = false;
         private String apiKey = "change-me";
         private final Jwt jwt = new Jwt();
         private final IntegrationClient integrationClient = new IntegrationClient();
+
+        public boolean isBasicAuthEnabled() {
+            return basicAuthEnabled;
+        }
+
+        public void setBasicAuthEnabled(boolean basicAuthEnabled) {
+            this.basicAuthEnabled = basicAuthEnabled;
+        }
 
         public boolean isApiKeyEnabled() {
             return apiKeyEnabled;

@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(properties = {
+    "app.security.basic-auth-enabled=true",
     "app.security.api-key-enabled=false",
     "app.security.jwt.enabled=false"
 })

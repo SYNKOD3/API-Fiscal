@@ -29,6 +29,7 @@ public class ProductionReadinessValidator implements ApplicationRunner {
             return;
         }
 
+        requireAtLeastOneAuthenticationMode();
         requireIntegrationClientCredentials();
         requireOptionalApiKey();
         requireOptionalJwt();
@@ -80,7 +81,19 @@ public class ProductionReadinessValidator implements ApplicationRunner {
         }
     }
 
+    private void requireAtLeastOneAuthenticationMode() {
+        if (!properties.getSecurity().isBasicAuthEnabled()
+            && !properties.getSecurity().isApiKeyEnabled()
+            && !properties.getSecurity().getJwt().isEnabled()) {
+            throw new IllegalStateException("Producao exige BASIC_AUTH_ENABLED, API_KEY_AUTH_ENABLED ou JWT_AUTH_ENABLED ativo.");
+        }
+    }
+
     private void requireIntegrationClientCredentials() {
+        if (!properties.getSecurity().isBasicAuthEnabled()
+            && !properties.getSecurity().getJwt().isEnabled()) {
+            return;
+        }
         AppProperties.IntegrationClient integrationClient = properties.getSecurity().getIntegrationClient();
         String username = integrationClient.getUsername();
         String password = integrationClient.getPassword();

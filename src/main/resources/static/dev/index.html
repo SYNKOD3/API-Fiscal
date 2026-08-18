@@ -296,7 +296,7 @@
 <body>
   <header>
     <h1>Fiscal API Dev Console</h1>
-    <p>Painel interno para testar cadastro de empresas, emissão NF-e/NFC-e, contingência, retry, XML e comprovante. A API usa login e senha; API key e JWT ficam opcionais para ativação futura.</p>
+    <p>Painel interno para testar cadastro de empresas, emissão NF-e/NFC-e, contingência, retry, XML e comprovante. A API usa X-API-Key por padrão; JWT fica opcional para ativação futura.</p>
   </header>
 
   <main>
@@ -306,25 +306,18 @@
         <label>Base URL
           <input id="baseUrl" value="" placeholder="http://localhost:8080">
         </label>
-        <label>Usuário
-          <input id="authUsername" value="dev-client">
-        </label>
-        <label>Senha
-          <input id="authPassword" value="dev-password-change-me" type="password">
-        </label>
-        <label>API key opcional
-          <input id="apiKey" placeholder="Use apenas se API_KEY_AUTH_ENABLED=true" type="password">
+        <label>API key
+          <input id="apiKey" value="dev-api-key-change-me-123456" placeholder="Valor de APP_API_KEY" type="password">
         </label>
         <label>JWT opcional
           <textarea id="jwtToken" placeholder="Use apenas se JWT_AUTH_ENABLED=true"></textarea>
         </label>
         <div class="actions">
           <button id="saveSettings">Salvar</button>
-          <button id="generateJwt" class="secondary">Gerar JWT opcional</button>
           <button id="loadCompanies" class="secondary">Listar empresas</button>
           <button id="runSimulation" class="warn">Teste simulado</button>
         </div>
-        <div class="hint">Use <strong>STUB</strong> para testes sem certificado. Por padrão, basta informar usuário e senha.</div>
+        <div class="hint">Use <strong>STUB</strong> para testes sem certificado. Por padrão, basta manter a API key local.</div>
       </div>
 
       <h3>Empresas</h3>
@@ -466,16 +459,12 @@
       return $("#jwtToken").value.trim().replace(/^Bearer\s+/i, "");
     }
 
-    function basicToken() {
-      return btoa(`${$("#authUsername").value}:${$("#authPassword").value}`);
-    }
-
     function authHeaders() {
       const token = jwtToken();
       return {
         "Content-Type": "application/json",
         ...(apiKey() ? { "X-API-Key": apiKey() } : {}),
-        Authorization: token ? `Bearer ${token}` : `Basic ${basicToken()}`
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       };
     }
 
@@ -669,37 +658,8 @@
     $("#saveSettings").addEventListener("click", () => {
       localStorage.setItem("fiscal-dev-base-url", $("#baseUrl").value);
       localStorage.setItem("fiscal-dev-api-key", $("#apiKey").value);
-      localStorage.setItem("fiscal-dev-auth-username", $("#authUsername").value);
-      localStorage.setItem("fiscal-dev-auth-password", $("#authPassword").value);
       localStorage.setItem("fiscal-dev-jwt", $("#jwtToken").value);
       log("Configurações salvas no navegador.");
-    });
-
-    $("#generateJwt").addEventListener("click", async () => {
-      try {
-        const response = await fetch(baseUrl() + "/api/v1/auth/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: $("#authUsername").value,
-            password: $("#authPassword").value,
-            subject: "dev-console",
-            tenantId: "tenant-dev",
-            scopes: ["fiscal:admin"],
-            expiresInMinutes: 60
-          })
-        });
-        const body = await response.json();
-        if (!response.ok) {
-          throw new Error(JSON.stringify(body));
-        }
-        const token = body.data?.accessToken || body.accessToken;
-        $("#jwtToken").value = token;
-        localStorage.setItem("fiscal-dev-jwt", token);
-        log(body);
-      } catch (error) {
-        log(error.message);
-      }
     });
 
     $("#loadCompanies").addEventListener("click", async () => {
@@ -820,9 +780,7 @@
 
     function boot() {
       $("#baseUrl").value = localStorage.getItem("fiscal-dev-base-url") || window.location.origin;
-      $("#apiKey").value = localStorage.getItem("fiscal-dev-api-key") || "";
-      $("#authUsername").value = localStorage.getItem("fiscal-dev-auth-username") || "dev-client";
-      $("#authPassword").value = localStorage.getItem("fiscal-dev-auth-password") || "dev-password-change-me";
+      $("#apiKey").value = localStorage.getItem("fiscal-dev-api-key") || "dev-api-key-change-me-123456";
       $("#jwtToken").value = localStorage.getItem("fiscal-dev-jwt") || "";
       $("#externalReference").value = `PEDIDO-${Date.now()}`;
     }

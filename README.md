@@ -14,7 +14,7 @@ API Spring Boot para emissão fiscal multiempresa, com suporte a NF-e, NFC-e, co
 - Auditoria de eventos fiscais por empresa e documento.
 - Logs operacionais com `X-Request-Id`, status HTTP e tempo de resposta.
 - Autenticação por login e senha via HTTP Basic.
-- Suporte opcional a `X-API-Key` e JWT Bearer para ativação futura.
+- Autenticação por `X-API-Key`, com HTTP Basic e JWT Bearer opcionais para ativação futura.
 - Swagger opcional para desenvolvimento.
 - Console dev opcional para testes locais.
 
@@ -68,10 +68,9 @@ Por padrão, a API local usa:
 URL: http://localhost:8081
 Banco: H2 em memória
 Provider fiscal: STUB
-API key: desativada por padrão
-Login: dev-client
-Senha: dev-password-change-me
-API key obrigatória: não
+API key: dev-api-key-change-me-123456
+Login e senha: desativado por padrão
+API key obrigatória: sim
 JWT obrigatório: não
 Swagger: habilitado
 Console dev: habilitado
@@ -100,14 +99,13 @@ http://localhost:8081/swagger-ui/index.html
 Clique em `Authorize` e preencha:
 
 ```text
-Login e senha
-username: dev-client
-password: dev-password-change-me
+Chave da API
+Value: dev-api-key-change-me-123456
 ```
 
 Depois execute `Empresas > POST /api/v1/companies` e, em seguida, `Documentos fiscais > POST /api/v1/documents`.
 
-Para teste sem certificado e sem SEFAZ real, mantenha `FISCAL_PROVIDER=STUB`.
+Para teste local sem certificado e sem SEFAZ real, mantenha `FISCAL_PROVIDER=STUB`.
 
 ## Configuração de Produção
 
@@ -123,11 +121,12 @@ Configure os valores reais no `.env`:
 POSTGRES_PASSWORD=senha-forte-do-postgres
 APP_SECRETS_KEY=chave-fixa-com-pelo-menos-32-caracteres
 
-AUTH_USERNAME=usuario-da-integracao
-AUTH_PASSWORD=senha-forte-da-integracao-com-mais-de-24-caracteres
+BASIC_AUTH_ENABLED=false
+AUTH_USERNAME=
+AUTH_PASSWORD=
 
-API_KEY_AUTH_ENABLED=false
-APP_API_KEY=chave-forte-da-api
+API_KEY_AUTH_ENABLED=true
+APP_API_KEY=chave-forte-da-api-com-mais-de-24-caracteres
 
 JWT_AUTH_ENABLED=false
 JWT_SECRET=chave-jwt-com-pelo-menos-32-caracteres
@@ -170,11 +169,12 @@ Invoke-WebRequest http://localhost:8081/actuator/health
 | `DATABASE_USERNAME` | Sim | Usuário do PostgreSQL. |
 | `DATABASE_PASSWORD` | Sim | Senha do PostgreSQL. |
 | `APP_SECRETS_KEY` | Sim | Chave fixa usada para criptografar segredos. Não alterar após cadastrar certificados. |
-| `AUTH_USERNAME` | Sim | Usuário da integração usado no HTTP Basic. |
-| `AUTH_PASSWORD` | Sim | Senha forte da integração usada no HTTP Basic. |
-| `API_KEY_AUTH_ENABLED` | Não | Ativa exigência adicional de `X-API-Key`. Padrão: `false`. |
-| `APP_API_KEY` | Não | Chave exigida somente quando `API_KEY_AUTH_ENABLED=true`. |
-| `JWT_AUTH_ENABLED` | Não | Ativa aceitação de JWT Bearer como alternativa ao Basic Auth. Padrão: `false`. |
+| `BASIC_AUTH_ENABLED` | Não | Ativa HTTP Basic. Para integração server-to-server por API key, use `false`. Padrão local: `false`. |
+| `AUTH_USERNAME` | Não | Usuário da integração, exigido somente quando `BASIC_AUTH_ENABLED=true` ou para emissão de JWT pela própria API. |
+| `AUTH_PASSWORD` | Não | Senha da integração, exigida somente quando `BASIC_AUTH_ENABLED=true` ou para emissão de JWT pela própria API. |
+| `API_KEY_AUTH_ENABLED` | Sim | Ativa exigência de `X-API-Key`. Recomendado para integração com sistemas externos. |
+| `APP_API_KEY` | Sim | Chave enviada pelo integrador no header `X-API-Key` quando `API_KEY_AUTH_ENABLED=true`. |
+| `JWT_AUTH_ENABLED` | Não | Ativa aceitação de JWT Bearer como alternativa. Padrão: `false`. |
 | `JWT_SECRET` | Não | Chave usada para validar/emitir JWT HS256 quando `JWT_AUTH_ENABLED=true`. |
 | `JWT_ISSUER` | Não | Emissor esperado no claim `iss` quando JWT estiver ativo. |
 | `JWT_AUDIENCE` | Não | Audiência esperada no claim `aud` quando JWT estiver ativo. |
@@ -191,38 +191,42 @@ Invoke-WebRequest http://localhost:8081/actuator/health
 
 ## Autenticação
 
-O acesso principal da API é HTTP Basic com usuário e senha da integração.
-
-```http
-Authorization: Basic base64(username:password)
-```
-
-No Swagger, clique em `Authorize`, selecione `Login e senha`, informe `AUTH_USERNAME` e `AUTH_PASSWORD` e execute os endpoints.
-
-Exemplo de chamada protegida:
-
-```http
-Authorization: Basic base64(usuario-da-integracao:senha-da-integracao)
-```
-
-## Camadas Opcionais de Segurança
-
-`X-API-Key` e JWT continuam implementados, mas não são obrigatórios por padrão.
-
-Para exigir API key além do login/senha:
-
-```env
-API_KEY_AUTH_ENABLED=true
-APP_API_KEY=chave-forte-da-api
-```
-
-Quando ativo, envie também:
+O acesso recomendado para integração entre sistemas é por API key no header `X-API-Key`.
 
 ```http
 X-API-Key: chave-forte-da-api
 ```
 
-Para aceitar JWT Bearer como alternativa ao Basic Auth:
+No Swagger, clique em `Authorize`, selecione `Chave da API`, informe o valor de `APP_API_KEY` e execute os endpoints.
+
+Exemplo de chamada protegida por API key:
+
+```http
+POST /api/v1/documents
+X-API-Key: chave-forte-da-api
+```
+
+## Camadas Opcionais de Segurança
+
+HTTP Basic e JWT continuam implementados, mas são opcionais.
+
+Para manter apenas API key:
+
+```env
+BASIC_AUTH_ENABLED=false
+API_KEY_AUTH_ENABLED=true
+APP_API_KEY=chave-forte-da-api
+```
+
+Para ativar login e senha no Swagger ou em integrações legadas:
+
+```env
+BASIC_AUTH_ENABLED=true
+AUTH_USERNAME=usuario-da-integracao
+AUTH_PASSWORD=senha-forte-da-integracao-com-mais-de-24-caracteres
+```
+
+Para aceitar JWT Bearer como alternativa:
 
 ```env
 JWT_AUTH_ENABLED=true
@@ -756,8 +760,8 @@ Recomendações para produção:
 - Não versionar `.env`, certificados, dumps ou logs sensíveis.
 - Usar volume privado para certificados.
 - Usar `APP_SECRETS_KEY` forte e estável.
-- Usar senha de integração forte e rotacionada com procedimento controlado.
-- Ativar `API_KEY_AUTH_ENABLED` ou `JWT_AUTH_ENABLED` somente quando houver necessidade operacional.
+- Usar `APP_API_KEY` forte e rotacionada com procedimento controlado.
+- Manter `BASIC_AUTH_ENABLED=false` e `JWT_AUTH_ENABLED=false`, salvo necessidade operacional.
 - Registrar e monitorar erros por `X-Request-Id`.
 
 ## Licença

@@ -28,7 +28,8 @@ public class AuthController {
         description = """
             Endpoint opcional para gerar Bearer token emitido pela própria API Fiscal.
 
-            O acesso principal da API é HTTP Basic. Use este endpoint apenas se JWT_AUTH_ENABLED=true.
+            Use este endpoint apenas se JWT_AUTH_ENABLED=true. Em integrações server-to-server,
+            prefira X-API-Key quando JWT estiver desativado.
             """
     )
     public ApiEnvelope<TokenResponse> token(@RequestBody(required = false) TokenRequest request,

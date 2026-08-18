@@ -25,7 +25,7 @@ class OpenApiConfigTests {
     private ObjectMapper objectMapper;
 
     @Test
-    void exposesTokenEndpointWithoutSecurityAndProtectedEndpointsWithBasicSecurity() throws Exception {
+    void exposesTokenEndpointWithoutSecurityAndProtectedEndpointsWithApiKeySecurity() throws Exception {
         String response = mockMvc.perform(get("/v3/api-docs"))
             .andReturn()
             .getResponse()
@@ -50,10 +50,10 @@ class OpenApiConfigTests {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> security = (List<Map<String, Object>>) companiesGet.get("security");
 
-        assertThat(securitySchemes).containsOnlyKeys("Login e senha");
+        assertThat(securitySchemes).containsOnlyKeys("Chave da API");
         assertThat((List<?>) tokenPost.get("security")).isEmpty();
         assertThat(security).isNotEmpty();
-        assertThat(security.getFirst()).containsKey("Login e senha");
-        assertThat(security.getFirst()).doesNotContainKeys("Chave da API", "JWT Integrador");
+        assertThat(security.getFirst()).containsKey("Chave da API");
+        assertThat(security.getFirst()).doesNotContainKeys("Login e senha", "JWT Integrador");
     }
 }

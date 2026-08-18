@@ -33,12 +33,12 @@ public class OpenApiConfig {
                     ## Como testar pelo Swagger
 
                     1. Clique no botão `Authorize` no topo do Swagger.
-                    2. Em `Login e senha`, informe usuário e senha da integração.
+                    2. Informe a credencial ativa no ambiente: `X-API-Key`, login e senha ou JWT.
                     3. Execute os endpoints protegidos normalmente pelo próprio Swagger.
 
-                    Em ambiente local, os valores padrão são `dev-client` e `dev-password-change-me`.
-                    `X-API-Key` e JWT continuam disponíveis para ativação futura por variável de ambiente,
-                    mas ficam desobrigados enquanto `API_KEY_AUTH_ENABLED=false` e `JWT_AUTH_ENABLED=false`.
+                    Em ambiente local, a API key vem ativa por padrão com
+                    `dev-api-key-change-me-123456`. Para ativar login e senha,
+                    use `BASIC_AUTH_ENABLED=true`.
                     """)
                 .contact(new Contact().name("Antigravity")))
             .addTagsItem(new Tag()
@@ -66,11 +66,14 @@ public class OpenApiConfig {
     }
 
     private Components securityComponents(AppProperties properties) {
-        Components components = new Components()
-            .addSecuritySchemes(BASIC_SCHEME, new SecurityScheme()
+        Components components = new Components();
+
+        if (properties.getSecurity().isBasicAuthEnabled()) {
+            components.addSecuritySchemes(BASIC_SCHEME, new SecurityScheme()
                 .type(SecurityScheme.Type.HTTP)
                 .scheme("basic")
-                .description("Informe o usuário e a senha da integração. Este é o acesso principal da API."));
+                .description("Informe o usuário e a senha da integração. Uso opcional/legado."));
+        }
 
         if (properties.getSecurity().isApiKeyEnabled()) {
             components.addSecuritySchemes(API_KEY_SCHEME, new SecurityScheme()
@@ -98,11 +101,15 @@ public class OpenApiConfig {
                 operation.setSecurity(List.of());
                 return;
             }
-            SecurityRequirement basicRequirement = new SecurityRequirement().addList(BASIC_SCHEME);
-            if (properties.getSecurity().isApiKeyEnabled()) {
-                basicRequirement.addList(API_KEY_SCHEME);
+            if (properties.getSecurity().isBasicAuthEnabled()) {
+                SecurityRequirement basicRequirement = new SecurityRequirement().addList(BASIC_SCHEME);
+                if (properties.getSecurity().isApiKeyEnabled()) {
+                    basicRequirement.addList(API_KEY_SCHEME);
+                }
+                operation.addSecurityItem(basicRequirement);
+            } else if (properties.getSecurity().isApiKeyEnabled()) {
+                operation.addSecurityItem(new SecurityRequirement().addList(API_KEY_SCHEME));
             }
-            operation.addSecurityItem(basicRequirement);
 
             if (properties.getSecurity().getJwt().isEnabled()) {
                 SecurityRequirement jwtRequirement = new SecurityRequirement().addList(JWT_SCHEME);

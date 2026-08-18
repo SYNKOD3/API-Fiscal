@@ -32,7 +32,8 @@ public class BasicAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/actuator/health")
+        return !properties.getSecurity().isBasicAuthEnabled()
+            || path.startsWith("/actuator/health")
             || path.equals("/api/v1/auth/token")
             || (properties.getDevConsole().isEnabled() && path.startsWith("/dev"))
             || (properties.getOpenApi().isPublicAccess()
