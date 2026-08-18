@@ -47,8 +47,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        String authorization = request.getHeader(AUTHORIZATION_HEADER);
+        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
-            JwtPrincipal principal = jwtTokenService.validate(token(request));
+            JwtPrincipal principal = jwtTokenService.validate(token(authorization));
             requireScope(request, principal);
             var authentication = new UsernamePasswordAuthenticationToken(
                 principal,
@@ -64,11 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
-    private String token(HttpServletRequest request) {
-        String authorization = request.getHeader(AUTHORIZATION_HEADER);
-        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
-            throw new JwtValidationException("JWT ausente no header Authorization");
-        }
+    private String token(String authorization) {
         return authorization.substring(BEARER_PREFIX.length()).trim();
     }
 

@@ -13,7 +13,9 @@ import br.com.antigravity.fiscalapi.document.FiscalItemRequest;
 import br.com.antigravity.fiscalapi.document.IssueDocumentRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +38,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @EnabledIfSystemProperty(named = "performanceTests", matches = "true")
 class PerformanceSmokeTests {
 
-    private static final String API_KEY = "change-me";
+    private static final String AUTHORIZATION = "Basic " + Base64.getEncoder().encodeToString(
+        "dev-client:dev-password-change-me".getBytes(StandardCharsets.UTF_8)
+    );
     private static final int WARMUP_RUNS = Integer.getInteger("performanceWarmup", 5);
     private static final int READ_RUNS = Integer.getInteger("performanceReadRuns", 50);
     private static final int WRITE_RUNS = Integer.getInteger("performanceWriteRuns", 20);
@@ -56,12 +60,12 @@ class PerformanceSmokeTests {
 
         List<BenchmarkResult> results = List.of(
             measure("GET /actuator/health", READ_RUNS, () -> get("/actuator/health")),
-            measure("GET /api/v1/companies", READ_RUNS, () -> get("/api/v1/companies").header("X-API-Key", API_KEY)),
+            measure("GET /api/v1/companies", READ_RUNS, () -> get("/api/v1/companies").header("Authorization", AUTHORIZATION)),
             measure("GET /api/v1/documents", READ_RUNS, () -> get("/api/v1/documents")
-                .header("X-API-Key", API_KEY)
+                .header("Authorization", AUTHORIZATION)
                 .queryParam("companyId", company.id().toString())),
             measure("POST /api/v1/documents", WRITE_RUNS, () -> post("/api/v1/documents")
-                .header("X-API-Key", API_KEY)
+                .header("Authorization", AUTHORIZATION)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(documentRequest(company))))
         );

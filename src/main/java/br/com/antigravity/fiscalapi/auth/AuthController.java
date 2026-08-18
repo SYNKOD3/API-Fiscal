@@ -26,10 +26,9 @@ public class AuthController {
     @Operation(
         summary = "Gerar token de acesso",
         description = """
-            Recebe credenciais da integração e retorna um Bearer token emitido pela própria API Fiscal.
+            Endpoint opcional para gerar Bearer token emitido pela própria API Fiscal.
 
-            No Swagger, execute este endpoint primeiro. Depois copie `data.accessToken`, clique em `Authorize`,
-            informe a API key em `Chave da API` e cole o token em `JWT Integrador`.
+            O acesso principal da API é HTTP Basic. Use este endpoint apenas se JWT_AUTH_ENABLED=true.
             """
     )
     public ApiEnvelope<TokenResponse> token(@RequestBody(required = false) TokenRequest request,

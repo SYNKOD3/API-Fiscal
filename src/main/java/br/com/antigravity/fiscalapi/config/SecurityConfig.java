@@ -13,6 +13,7 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                            BasicAuthFilter basicAuthFilter,
                                             ApiKeyFilter apiKeyFilter,
                                             JwtAuthenticationFilter jwtAuthenticationFilter,
                                             AppProperties properties) throws Exception {
@@ -32,7 +33,8 @@ public class SecurityConfig {
                 }
                 auth.anyRequest().authenticated();
             })
-            .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(basicAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(apiKeyFilter, BasicAuthFilter.class)
             .addFilterAfter(jwtAuthenticationFilter, ApiKeyFilter.class)
             .build();
     }

@@ -296,7 +296,7 @@
 <body>
   <header>
     <h1>Fiscal API Dev Console</h1>
-    <p>Painel interno para testar cadastro de empresas, emissão NF-e/NFC-e, contingência, retry, XML e comprovante. A API continua protegida: este console só facilita enviar o header <code>X-API-Key</code>.</p>
+    <p>Painel interno para testar cadastro de empresas, emissão NF-e/NFC-e, contingência, retry, XML e comprovante. A API usa login e senha; API key e JWT ficam opcionais para ativação futura.</p>
   </header>
 
   <main>
@@ -306,25 +306,25 @@
         <label>Base URL
           <input id="baseUrl" value="" placeholder="http://localhost:8080">
         </label>
-        <label>API key
-          <input id="apiKey" value="change-me" type="password">
-        </label>
-        <label>Usuário token
+        <label>Usuário
           <input id="authUsername" value="dev-client">
         </label>
-        <label>Senha token
+        <label>Senha
           <input id="authPassword" value="dev-password-change-me" type="password">
         </label>
-        <label>JWT dev opcional
-          <textarea id="jwtToken" placeholder="Clique em Gerar JWT dev ou cole um token Bearer aqui"></textarea>
+        <label>API key opcional
+          <input id="apiKey" placeholder="Use apenas se API_KEY_AUTH_ENABLED=true" type="password">
+        </label>
+        <label>JWT opcional
+          <textarea id="jwtToken" placeholder="Use apenas se JWT_AUTH_ENABLED=true"></textarea>
         </label>
         <div class="actions">
           <button id="saveSettings">Salvar</button>
-          <button id="generateJwt" class="secondary">Gerar JWT dev</button>
+          <button id="generateJwt" class="secondary">Gerar JWT opcional</button>
           <button id="loadCompanies" class="secondary">Listar empresas</button>
           <button id="runSimulation" class="warn">Teste simulado</button>
         </div>
-        <div class="hint">Use <strong>STUB</strong> para testes sem certificado. Se o JWT estiver ativo, use <strong>Gerar JWT dev</strong> antes de chamar a API.</div>
+        <div class="hint">Use <strong>STUB</strong> para testes sem certificado. Por padrão, basta informar usuário e senha.</div>
       </div>
 
       <h3>Empresas</h3>
@@ -459,19 +459,23 @@
     }
 
     function apiKey() {
-      return $("#apiKey").value;
+      return $("#apiKey").value.trim();
     }
 
     function jwtToken() {
       return $("#jwtToken").value.trim().replace(/^Bearer\s+/i, "");
     }
 
+    function basicToken() {
+      return btoa(`${$("#authUsername").value}:${$("#authPassword").value}`);
+    }
+
     function authHeaders() {
       const token = jwtToken();
       return {
         "Content-Type": "application/json",
-        "X-API-Key": apiKey(),
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+        ...(apiKey() ? { "X-API-Key": apiKey() } : {}),
+        Authorization: token ? `Bearer ${token}` : `Basic ${basicToken()}`
       };
     }
 
@@ -689,8 +693,9 @@
         if (!response.ok) {
           throw new Error(JSON.stringify(body));
         }
-        $("#jwtToken").value = body.accessToken;
-        localStorage.setItem("fiscal-dev-jwt", body.accessToken);
+        const token = body.data?.accessToken || body.accessToken;
+        $("#jwtToken").value = token;
+        localStorage.setItem("fiscal-dev-jwt", token);
         log(body);
       } catch (error) {
         log(error.message);
@@ -815,7 +820,7 @@
 
     function boot() {
       $("#baseUrl").value = localStorage.getItem("fiscal-dev-base-url") || window.location.origin;
-      $("#apiKey").value = localStorage.getItem("fiscal-dev-api-key") || "change-me";
+      $("#apiKey").value = localStorage.getItem("fiscal-dev-api-key") || "";
       $("#authUsername").value = localStorage.getItem("fiscal-dev-auth-username") || "dev-client";
       $("#authPassword").value = localStorage.getItem("fiscal-dev-auth-password") || "dev-password-change-me";
       $("#jwtToken").value = localStorage.getItem("fiscal-dev-jwt") || "";

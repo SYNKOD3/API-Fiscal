@@ -13,7 +13,8 @@ API Spring Boot para emissão fiscal multiempresa, com suporte a NF-e, NFC-e, co
 - Roteamento SEFAZ pela UF da empresa emitente.
 - Auditoria de eventos fiscais por empresa e documento.
 - Logs operacionais com `X-Request-Id`, status HTTP e tempo de resposta.
-- Autenticação por `X-API-Key` e JWT Bearer em produção.
+- Autenticação por login e senha via HTTP Basic.
+- Suporte opcional a `X-API-Key` e JWT Bearer para ativação futura.
 - Swagger opcional para desenvolvimento.
 - Console dev opcional para testes locais.
 
@@ -67,8 +68,11 @@ Por padrão, a API local usa:
 URL: http://localhost:8081
 Banco: H2 em memória
 Provider fiscal: STUB
-API key: change-me
-JWT: desativado
+API key: desativada por padrão
+Login: dev-client
+Senha: dev-password-change-me
+API key obrigatória: não
+JWT obrigatório: não
 Swagger: habilitado
 Console dev: habilitado
 ```
@@ -93,44 +97,17 @@ Para testar tudo pelo Swagger, abra:
 http://localhost:8081/swagger-ui/index.html
 ```
 
-Em ambiente local com JWT desativado, clique em `Authorize`, preencha apenas:
+Clique em `Authorize` e preencha:
 
 ```text
-Chave da API: change-me
+Login e senha
+username: dev-client
+password: dev-password-change-me
 ```
 
 Depois execute `Empresas > POST /api/v1/companies` e, em seguida, `Documentos fiscais > POST /api/v1/documents`.
 
-Em ambiente com JWT ativado, faça primeiro:
-
-```text
-Autenticação > POST /api/v1/auth/token
-```
-
-Use este body para teste local:
-
-```json
-{
-  "username": "dev-client",
-  "password": "dev-password-change-me",
-  "subject": "swagger-local",
-  "tenantId": "tenant-dev",
-  "merchantId": "merchant-dev",
-  "scopes": [
-    "fiscal:admin"
-  ],
-  "expiresInMinutes": 60
-}
-```
-
-Copie `data.accessToken`, clique em `Authorize` e preencha:
-
-```text
-Chave da API: change-me
-JWT Integrador: cole somente o accessToken, sem Bearer
-```
-
-Depois execute os endpoints protegidos pelo próprio Swagger. Para teste sem certificado e sem SEFAZ real, mantenha `FISCAL_PROVIDER=STUB`.
+Para teste sem certificado e sem SEFAZ real, mantenha `FISCAL_PROVIDER=STUB`.
 
 ## Configuração de Produção
 
@@ -144,14 +121,18 @@ Configure os valores reais no `.env`:
 
 ```env
 POSTGRES_PASSWORD=senha-forte-do-postgres
-APP_API_KEY=chave-forte-da-api
 APP_SECRETS_KEY=chave-fixa-com-pelo-menos-32-caracteres
-JWT_AUTH_ENABLED=true
+
+AUTH_USERNAME=usuario-da-integracao
+AUTH_PASSWORD=senha-forte-da-integracao-com-mais-de-24-caracteres
+
+API_KEY_AUTH_ENABLED=false
+APP_API_KEY=chave-forte-da-api
+
+JWT_AUTH_ENABLED=false
 JWT_SECRET=chave-jwt-com-pelo-menos-32-caracteres
 JWT_ISSUER=fiscal-platform
 JWT_AUDIENCE=fiscal-api
-AUTH_USERNAME=usuario-da-integracao
-AUTH_PASSWORD=senha-forte-da-integracao-com-mais-de-24-caracteres
 AUTH_DEFAULT_SCOPES=fiscal:companies:write,fiscal:companies:read,fiscal:certificates:write,fiscal:certificates:read,fiscal:documents:issue,fiscal:documents:retry,fiscal:documents:read,fiscal:audit:read,fiscal:logs:read,fiscal:sefaz:read
 AUTH_TOKEN_TTL_MINUTES=60
 FISCAL_PROVIDER=LIBRARY
@@ -187,16 +168,17 @@ Invoke-WebRequest http://localhost:8081/actuator/health
 | `DATABASE_URL` | Sim | URL JDBC do PostgreSQL. |
 | `DATABASE_USERNAME` | Sim | Usuário do PostgreSQL. |
 | `DATABASE_PASSWORD` | Sim | Senha do PostgreSQL. |
-| `APP_API_KEY` | Sim | Chave exigida no header `X-API-Key`. |
 | `APP_SECRETS_KEY` | Sim | Chave fixa usada para criptografar segredos. Não alterar após cadastrar certificados. |
-| `JWT_AUTH_ENABLED` | Sim | Ativa autenticação JWT. Em produção deve ser `true`. |
-| `JWT_SECRET` | Sim | Chave usada para validar JWT HS256. |
-| `JWT_ISSUER` | Sim | Emissor esperado no claim `iss`. |
-| `JWT_AUDIENCE` | Sim | Audiência esperada no claim `aud`. |
-| `AUTH_USERNAME` | Sim | Usuário da integração usado para gerar token na Fiscal API. |
-| `AUTH_PASSWORD` | Sim | Senha forte da integração usada para gerar token na Fiscal API. |
-| `AUTH_DEFAULT_SCOPES` | Sim | Escopos máximos permitidos para tokens emitidos pela Fiscal API. |
-| `AUTH_TOKEN_TTL_MINUTES` | Não | Tempo máximo de validade dos tokens emitidos pela Fiscal API. |
+| `AUTH_USERNAME` | Sim | Usuário da integração usado no HTTP Basic. |
+| `AUTH_PASSWORD` | Sim | Senha forte da integração usada no HTTP Basic. |
+| `API_KEY_AUTH_ENABLED` | Não | Ativa exigência adicional de `X-API-Key`. Padrão: `false`. |
+| `APP_API_KEY` | Não | Chave exigida somente quando `API_KEY_AUTH_ENABLED=true`. |
+| `JWT_AUTH_ENABLED` | Não | Ativa aceitação de JWT Bearer como alternativa ao Basic Auth. Padrão: `false`. |
+| `JWT_SECRET` | Não | Chave usada para validar/emitir JWT HS256 quando `JWT_AUTH_ENABLED=true`. |
+| `JWT_ISSUER` | Não | Emissor esperado no claim `iss` quando JWT estiver ativo. |
+| `JWT_AUDIENCE` | Não | Audiência esperada no claim `aud` quando JWT estiver ativo. |
+| `AUTH_DEFAULT_SCOPES` | Não | Escopos máximos permitidos para tokens emitidos pela Fiscal API quando JWT estiver ativo. |
+| `AUTH_TOKEN_TTL_MINUTES` | Não | Tempo máximo de validade dos tokens emitidos pela Fiscal API quando JWT estiver ativo. |
 | `FISCAL_PROVIDER` | Sim | `STUB` para simulação ou `LIBRARY` para integração fiscal real. |
 | `FISCAL_UNAVAILABLE_STATES` | Não | Lista de UFs simuladas como indisponíveis, exemplo: `BA,SP`. |
 | `CERTIFICATE_STORAGE_PATH` | Sim | Diretório privado e persistente para certificados A1. |
@@ -207,9 +189,47 @@ Invoke-WebRequest http://localhost:8081/actuator/health
 
 ## Autenticação
 
-Em produção, o integrador não precisa gerar JWT nem conhecer `JWT_SECRET`. A Fiscal API possui um endpoint próprio para autenticação com usuário e senha da integração.
+O acesso principal da API é HTTP Basic com usuário e senha da integração.
 
-Gerar token:
+```http
+Authorization: Basic base64(username:password)
+```
+
+No Swagger, clique em `Authorize`, selecione `Login e senha`, informe `AUTH_USERNAME` e `AUTH_PASSWORD` e execute os endpoints.
+
+Exemplo de chamada protegida:
+
+```http
+Authorization: Basic base64(usuario-da-integracao:senha-da-integracao)
+```
+
+## Camadas Opcionais de Segurança
+
+`X-API-Key` e JWT continuam implementados, mas não são obrigatórios por padrão.
+
+Para exigir API key além do login/senha:
+
+```env
+API_KEY_AUTH_ENABLED=true
+APP_API_KEY=chave-forte-da-api
+```
+
+Quando ativo, envie também:
+
+```http
+X-API-Key: chave-forte-da-api
+```
+
+Para aceitar JWT Bearer como alternativa ao Basic Auth:
+
+```env
+JWT_AUTH_ENABLED=true
+JWT_SECRET=chave-jwt-com-pelo-menos-32-caracteres
+JWT_ISSUER=fiscal-platform
+JWT_AUDIENCE=fiscal-api
+```
+
+O token opcional pode ser gerado pela própria API:
 
 ```http
 POST /api/v1/auth/token
@@ -230,37 +250,6 @@ Content-Type: application/json
   "expiresInMinutes": 60
 }
 ```
-
-Resposta:
-
-```json
-{
-  "data": {
-    "accessToken": "JWT_GERADO_PELA_FISCAL_API",
-    "tokenType": "Bearer",
-    "expiresInSeconds": 3600,
-    "headerName": "Authorization",
-    "headerValue": "Bearer JWT_GERADO_PELA_FISCAL_API"
-  }
-}
-```
-
-Também é possível enviar as credenciais do token endpoint com Basic Auth:
-
-```http
-Authorization: Basic base64(username:password)
-```
-
-Depois de obter o token, cada chamada protegida deve enviar:
-
-```http
-X-API-Key: chave-forte-da-api
-Authorization: Bearer JWT_GERADO_PELA_FISCAL_API
-```
-
-A API key identifica a instalação/integração. O Bearer token autoriza a ação, os escopos e o vínculo com `tenantId` e `merchantId`.
-
-A API não depende de uma plataforma específica para funcionar. Os campos `tenantId` e `merchantId` são identificadores genéricos do sistema que estiver integrando.
 
 Exemplo de payload JWT:
 
@@ -306,71 +295,7 @@ fiscal:logs:read             GET /api/v1/operational-logs...
 fiscal:sefaz:read            GET /api/v1/sefaz...
 ```
 
-## JWT Para Testes Locais
-
-Em ambiente local, o JWT fica desativado por padrão:
-
-```env
-JWT_AUTH_ENABLED=false
-```
-
-Nesse modo, basta enviar a API key:
-
-```http
-X-API-Key: change-me
-```
-
-Para testar o fluxo com token ativado, habilite:
-
-```env
-JWT_AUTH_ENABLED=true
-```
-
-Com o console dev habilitado, gere um token de teste pelo endpoint oficial:
-
-```http
-POST /api/v1/auth/token
-Content-Type: application/json
-```
-
-```json
-{
-  "username": "dev-client",
-  "password": "dev-password-change-me",
-  "subject": "dev-console",
-  "tenantId": "tenant-dev",
-  "merchantId": "merchant-dev",
-  "scopes": ["fiscal:admin"],
-  "expiresInMinutes": 60
-}
-```
-
-Resposta:
-
-```json
-{
-  "accessToken": "JWT_GERADO",
-  "tokenType": "Bearer",
-  "expiresInSeconds": 3600,
-  "headerName": "Authorization",
-  "headerValue": "Bearer JWT_GERADO"
-}
-```
-
-Use o valor de `headerValue` nas chamadas protegidas:
-
-```http
-X-API-Key: change-me
-Authorization: Bearer JWT_GERADO
-```
-
-Também é possível gerar o JWT pelo console dev:
-
-```text
-http://localhost:8081/dev/index.html
-```
-
-Esse endpoint só deve existir em ambiente de desenvolvimento. Em produção, mantenha:
+Em produção, mantenha o console dev desabilitado:
 
 ```env
 APP_DEV_CONSOLE_ENABLED=false
@@ -398,8 +323,7 @@ Exemplo:
 
 ```http
 POST /api/v1/companies
-X-API-Key: chave-forte-da-api
-Authorization: Bearer jwt-da-integracao
+Authorization: Basic base64(usuario-da-integracao:senha-da-integracao)
 Content-Type: application/json
 ```
 
@@ -459,8 +383,7 @@ Exemplo:
 
 ```http
 POST /api/v1/companies/{companyId}/certificates
-X-API-Key: chave-forte-da-api
-Authorization: Bearer jwt-da-integracao
+Authorization: Basic base64(usuario-da-integracao:senha-da-integracao)
 Content-Type: multipart/form-data
 
 file=@empresa.pfx
@@ -504,8 +427,7 @@ Exemplo usando `companyId`:
 
 ```http
 POST /api/v1/documents
-X-API-Key: chave-forte-da-api
-Authorization: Bearer jwt-da-integracao
+Authorization: Basic base64(usuario-da-integracao:senha-da-integracao)
 Content-Type: application/json
 ```
 
@@ -578,8 +500,7 @@ Listar documentos por empresa:
 
 ```http
 GET /api/v1/documents?companyId={uuid}
-X-API-Key: chave-forte-da-api
-Authorization: Bearer jwt-da-integracao
+Authorization: Basic base64(usuario-da-integracao:senha-da-integracao)
 ```
 
 Consultar um documento:
@@ -690,16 +611,14 @@ Consultar logs:
 
 ```http
 GET /api/v1/operational-logs?level=WARN&limit=100
-X-API-Key: chave-forte-da-api
-Authorization: Bearer jwt-da-integracao
+Authorization: Basic base64(usuario-da-integracao:senha-da-integracao)
 ```
 
 Consultar log por request id:
 
 ```http
 GET /api/v1/operational-logs/requests/{requestId}
-X-API-Key: chave-forte-da-api
-Authorization: Bearer jwt-da-integracao
+Authorization: Basic base64(usuario-da-integracao:senha-da-integracao)
 ```
 
 Os logs registram:
@@ -796,8 +715,8 @@ Recomendações para produção:
 - Não versionar `.env`, certificados, dumps ou logs sensíveis.
 - Usar volume privado para certificados.
 - Usar `APP_SECRETS_KEY` forte e estável.
-- Rotacionar `APP_API_KEY` e `JWT_SECRET` com procedimento controlado.
-- Emitir JWTs curtos.
+- Usar senha de integração forte e rotacionada com procedimento controlado.
+- Ativar `API_KEY_AUTH_ENABLED` ou `JWT_AUTH_ENABLED` somente quando houver necessidade operacional.
 - Registrar e monitorar erros por `X-Request-Id`.
 
 ## Licença

@@ -28,10 +28,11 @@ services:
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-fiscal_api}
       DATABASE_USERNAME: ${POSTGRES_USER:-fiscal_api}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-      APP_API_KEY: ${APP_API_KEY}
+      API_KEY_AUTH_ENABLED: ${API_KEY_AUTH_ENABLED:-false}
+      APP_API_KEY: ${APP_API_KEY:-}
       APP_SECRETS_KEY: ${APP_SECRETS_KEY}
-      JWT_AUTH_ENABLED: ${JWT_AUTH_ENABLED:-true}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_AUTH_ENABLED: ${JWT_AUTH_ENABLED:-false}
+      JWT_SECRET: ${JWT_SECRET:-}
       JWT_ISSUER: ${JWT_ISSUER:-fiscal-platform}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-fiscal-api}
       AUTH_USERNAME: ${AUTH_USERNAME}

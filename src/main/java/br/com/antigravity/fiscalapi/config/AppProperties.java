@@ -39,9 +39,18 @@ public class AppProperties {
     }
 
     public static class Security {
+        private boolean apiKeyEnabled = false;
         private String apiKey = "change-me";
         private final Jwt jwt = new Jwt();
         private final IntegrationClient integrationClient = new IntegrationClient();
+
+        public boolean isApiKeyEnabled() {
+            return apiKeyEnabled;
+        }
+
+        public void setApiKeyEnabled(boolean apiKeyEnabled) {
+            this.apiKeyEnabled = apiKeyEnabled;
+        }
 
         public String getApiKey() {
             return apiKey;

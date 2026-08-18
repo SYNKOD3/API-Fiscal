@@ -13,7 +13,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(properties = {
-    "app.security.jwt.enabled=true",
     "app.open-api.public-access=true"
 })
 @AutoConfigureMockMvc
@@ -26,7 +25,7 @@ class OpenApiConfigTests {
     private ObjectMapper objectMapper;
 
     @Test
-    void exposesTokenEndpointWithoutSecurityAndProtectedEndpointsWithSecurity() throws Exception {
+    void exposesTokenEndpointWithoutSecurityAndProtectedEndpointsWithBasicSecurity() throws Exception {
         String response = mockMvc.perform(get("/v3/api-docs"))
             .andReturn()
             .getResponse()
@@ -44,8 +43,12 @@ class OpenApiConfigTests {
         Map<String, Object> tokenPost = (Map<String, Object>) tokenPath.get("post");
         @SuppressWarnings("unchecked")
         Map<String, Object> companiesGet = (Map<String, Object>) companiesPath.get("get");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> security = (List<Map<String, Object>>) companiesGet.get("security");
 
         assertThat((List<?>) tokenPost.get("security")).isEmpty();
-        assertThat((List<?>) companiesGet.get("security")).isNotEmpty();
+        assertThat(security).isNotEmpty();
+        assertThat(security.getFirst()).containsKey("Login e senha");
+        assertThat(security.getFirst()).doesNotContainKeys("Chave da API", "JWT Integrador");
     }
 }

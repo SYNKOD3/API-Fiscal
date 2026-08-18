@@ -25,6 +25,10 @@ public class AuthService {
     }
 
     public TokenResponse issueToken(TokenRequest request, String authorizationHeader) {
+        if (!properties.getSecurity().getJwt().isEnabled()) {
+            throw new BadRequestException("JWT_AUTH_ENABLED=false; use Login e senha no Swagger");
+        }
+
         TokenRequest safeRequest = request == null ? TokenRequest.empty() : request;
         BasicCredentials basicCredentials = basicCredentials(authorizationHeader);
 

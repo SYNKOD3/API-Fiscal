@@ -26,7 +26,8 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/actuator/health")
+        return !properties.getSecurity().isApiKeyEnabled()
+            || path.startsWith("/actuator/health")
             || path.equals("/api/v1/auth/token")
             || (properties.getDevConsole().isEnabled() && path.startsWith("/dev"))
             || (properties.getOpenApi().isPublicAccess()
@@ -48,8 +49,10 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        var authentication = new UsernamePasswordAuthenticationToken("api-client", null, List.of());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            var authentication = new UsernamePasswordAuthenticationToken("api-client", null, List.of());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
         filterChain.doFilter(request, response);
     }
 }

@@ -29,9 +29,9 @@ public class ProductionReadinessValidator implements ApplicationRunner {
             return;
         }
 
-        requireStrongApiKey();
-        requireJwt();
         requireIntegrationClientCredentials();
+        requireOptionalApiKey();
+        requireOptionalJwt();
         requireSecretsKey();
         requireLibraryProvider();
         requirePrivateDevTools();
@@ -43,10 +43,13 @@ public class ProductionReadinessValidator implements ApplicationRunner {
         return Arrays.asList(environment.getActiveProfiles()).contains("prod");
     }
 
-    private void requireStrongApiKey() {
+    private void requireOptionalApiKey() {
+        if (!properties.getSecurity().isApiKeyEnabled()) {
+            return;
+        }
         String apiKey = properties.getSecurity().getApiKey();
         if (apiKey == null || apiKey.isBlank() || DEV_API_KEY.equals(apiKey) || apiKey.length() < 24) {
-            throw new IllegalStateException("Producao exige APP_API_KEY forte com pelo menos 24 caracteres.");
+            throw new IllegalStateException("API_KEY_AUTH_ENABLED=true exige APP_API_KEY forte com pelo menos 24 caracteres.");
         }
     }
 
@@ -60,20 +63,20 @@ public class ProductionReadinessValidator implements ApplicationRunner {
         }
     }
 
-    private void requireJwt() {
+    private void requireOptionalJwt() {
         AppProperties.Jwt jwt = properties.getSecurity().getJwt();
         if (!jwt.isEnabled()) {
-            throw new IllegalStateException("Producao exige JWT_AUTH_ENABLED=true.");
+            return;
         }
         String secret = jwt.getSecret();
         if (secret == null || secret.isBlank() || DEV_JWT_SECRET.equals(secret) || secret.length() < 32) {
-            throw new IllegalStateException("Producao exige JWT_SECRET forte com pelo menos 32 caracteres.");
+            throw new IllegalStateException("JWT_AUTH_ENABLED=true exige JWT_SECRET forte com pelo menos 32 caracteres.");
         }
         if (jwt.getIssuer() == null || jwt.getIssuer().isBlank()) {
-            throw new IllegalStateException("Producao exige JWT_ISSUER configurado.");
+            throw new IllegalStateException("JWT_AUTH_ENABLED=true exige JWT_ISSUER configurado.");
         }
         if (jwt.getAudience() == null || jwt.getAudience().isBlank()) {
-            throw new IllegalStateException("Producao exige JWT_AUDIENCE configurado.");
+            throw new IllegalStateException("JWT_AUTH_ENABLED=true exige JWT_AUDIENCE configurado.");
         }
     }
 
@@ -87,8 +90,8 @@ public class ProductionReadinessValidator implements ApplicationRunner {
         if (password == null || password.isBlank() || DEV_AUTH_PASSWORD.equals(password) || password.length() < 24) {
             throw new IllegalStateException("Produção exige AUTH_PASSWORD forte com pelo menos 24 caracteres.");
         }
-        if (integrationClient.getDefaultScopes().isEmpty()) {
-            throw new IllegalStateException("Produção exige AUTH_DEFAULT_SCOPES configurado.");
+        if (properties.getSecurity().getJwt().isEnabled() && integrationClient.getDefaultScopes().isEmpty()) {
+            throw new IllegalStateException("JWT_AUTH_ENABLED=true exige AUTH_DEFAULT_SCOPES configurado.");
         }
     }
 

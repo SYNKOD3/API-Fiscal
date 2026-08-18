@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
 
+    private static final String BASIC_SCHEME = "Login e senha";
     private static final String API_KEY_SCHEME = "Chave da API";
     private static final String JWT_SCHEME = "JWT Integrador";
     private static final String TOKEN_PATH = "/api/v1/auth/token";
@@ -31,20 +32,18 @@ public class OpenApiConfig {
 
                     ## Como testar pelo Swagger
 
-                    1. Abra `Autenticação > POST /api/v1/auth/token`.
-                    2. Clique em `Try it out` e execute com `username` e `password` da integração.
-                    3. Copie o campo `data.accessToken` da resposta.
-                    4. Clique no botão `Authorize` no topo do Swagger.
-                    5. Em `Chave da API`, informe a API key.
-                    6. Em `JWT Integrador`, cole somente o token, sem escrever `Bearer`.
-                    7. Execute os endpoints protegidos normalmente pelo próprio Swagger.
+                    1. Clique no botão `Authorize` no topo do Swagger.
+                    2. Em `Login e senha`, informe usuário e senha da integração.
+                    3. Execute os endpoints protegidos normalmente pelo próprio Swagger.
 
-                    Em ambiente local, os valores padrão são `change-me`, `dev-client` e `dev-password-change-me`.
+                    Em ambiente local, os valores padrão são `dev-client` e `dev-password-change-me`.
+                    `X-API-Key` e JWT continuam disponíveis para ativação futura por variável de ambiente,
+                    mas ficam desobrigados enquanto `API_KEY_AUTH_ENABLED=false` e `JWT_AUTH_ENABLED=false`.
                     """)
                 .contact(new Contact().name("Antigravity")))
             .addTagsItem(new Tag()
                 .name("Autenticação")
-                .description("Geração de token Bearer pela própria API Fiscal. Use este endpoint primeiro no Swagger."))
+                .description("Geração opcional de token Bearer para uso futuro, quando JWT estiver ativado."))
             .addTagsItem(new Tag()
                 .name("Empresas")
                 .description("Cadastro e consulta de empresas emissoras."))
@@ -64,26 +63,42 @@ public class OpenApiConfig {
                 .name("Roteamento SEFAZ")
                 .description("Consulta de rota fiscal por UF da empresa emitente e identificadores externos."))
             .components(new Components()
+                .addSecuritySchemes(BASIC_SCHEME, new SecurityScheme()
+                    .type(SecurityScheme.Type.HTTP)
+                    .scheme("basic")
+                    .description("Informe o usuário e a senha da integração. Este é o acesso principal da API."))
                 .addSecuritySchemes(API_KEY_SCHEME, new SecurityScheme()
                     .type(SecurityScheme.Type.APIKEY)
                     .in(SecurityScheme.In.HEADER)
                     .name("X-API-Key")
-                    .description("Informe a chave configurada em app.security.api-key."))
+                    .description("Opcional. Só é exigida quando API_KEY_AUTH_ENABLED=true."))
                 .addSecuritySchemes(JWT_SCHEME, new SecurityScheme()
                     .type(SecurityScheme.Type.HTTP)
                     .scheme("bearer")
                     .bearerFormat("JWT")
-                    .description("Cole somente o accessToken retornado por POST /api/v1/auth/token. Não inclua a palavra Bearer.")));
+                    .description("Opcional. Só é exigido quando JWT_AUTH_ENABLED=true. Cole somente o accessToken, sem Bearer.")));
     }
 
     @Bean
-    OpenApiCustomizer protectedEndpointsSecurityCustomizer() {
+    OpenApiCustomizer protectedEndpointsSecurityCustomizer(AppProperties properties) {
         return openApi -> openApi.getPaths().forEach((path, pathItem) -> pathItem.readOperations().forEach(operation -> {
             if (TOKEN_PATH.equals(path)) {
                 operation.setSecurity(List.of());
                 return;
             }
-            operation.addSecurityItem(new SecurityRequirement().addList(API_KEY_SCHEME).addList(JWT_SCHEME));
+            SecurityRequirement basicRequirement = new SecurityRequirement().addList(BASIC_SCHEME);
+            if (properties.getSecurity().isApiKeyEnabled()) {
+                basicRequirement.addList(API_KEY_SCHEME);
+            }
+            operation.addSecurityItem(basicRequirement);
+
+            if (properties.getSecurity().getJwt().isEnabled()) {
+                SecurityRequirement jwtRequirement = new SecurityRequirement().addList(JWT_SCHEME);
+                if (properties.getSecurity().isApiKeyEnabled()) {
+                    jwtRequirement.addList(API_KEY_SCHEME);
+                }
+                operation.addSecurityItem(jwtRequirement);
+            }
         }));
     }
 }
