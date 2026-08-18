@@ -21,7 +21,7 @@ public class OpenApiConfig {
     private static final String TOKEN_PATH = "/api/v1/auth/token";
 
     @Bean
-    OpenAPI fiscalOpenApi() {
+    OpenAPI fiscalOpenApi(AppProperties properties) {
         return new OpenAPI()
             .info(new Info()
                 .title("API Fiscal")
@@ -62,21 +62,33 @@ public class OpenApiConfig {
             .addTagsItem(new Tag()
                 .name("Roteamento SEFAZ")
                 .description("Consulta de rota fiscal por UF da empresa emitente e identificadores externos."))
-            .components(new Components()
-                .addSecuritySchemes(BASIC_SCHEME, new SecurityScheme()
-                    .type(SecurityScheme.Type.HTTP)
-                    .scheme("basic")
-                    .description("Informe o usuário e a senha da integração. Este é o acesso principal da API."))
-                .addSecuritySchemes(API_KEY_SCHEME, new SecurityScheme()
-                    .type(SecurityScheme.Type.APIKEY)
-                    .in(SecurityScheme.In.HEADER)
-                    .name("X-API-Key")
-                    .description("Opcional. Só é exigida quando API_KEY_AUTH_ENABLED=true."))
-                .addSecuritySchemes(JWT_SCHEME, new SecurityScheme()
-                    .type(SecurityScheme.Type.HTTP)
-                    .scheme("bearer")
-                    .bearerFormat("JWT")
-                    .description("Opcional. Só é exigido quando JWT_AUTH_ENABLED=true. Cole somente o accessToken, sem Bearer.")));
+            .components(securityComponents(properties));
+    }
+
+    private Components securityComponents(AppProperties properties) {
+        Components components = new Components()
+            .addSecuritySchemes(BASIC_SCHEME, new SecurityScheme()
+                .type(SecurityScheme.Type.HTTP)
+                .scheme("basic")
+                .description("Informe o usuário e a senha da integração. Este é o acesso principal da API."));
+
+        if (properties.getSecurity().isApiKeyEnabled()) {
+            components.addSecuritySchemes(API_KEY_SCHEME, new SecurityScheme()
+                .type(SecurityScheme.Type.APIKEY)
+                .in(SecurityScheme.In.HEADER)
+                .name("X-API-Key")
+                .description("Informe a chave configurada em APP_API_KEY."));
+        }
+
+        if (properties.getSecurity().getJwt().isEnabled()) {
+            components.addSecuritySchemes(JWT_SCHEME, new SecurityScheme()
+                .type(SecurityScheme.Type.HTTP)
+                .scheme("bearer")
+                .bearerFormat("JWT")
+                .description("Cole somente o accessToken, sem Bearer."));
+        }
+
+        return components;
     }
 
     @Bean

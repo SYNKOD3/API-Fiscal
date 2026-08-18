@@ -36,6 +36,10 @@ class OpenApiConfigTests {
         @SuppressWarnings("unchecked")
         Map<String, Object> paths = (Map<String, Object>) spec.get("paths");
         @SuppressWarnings("unchecked")
+        Map<String, Object> components = (Map<String, Object>) spec.get("components");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> securitySchemes = (Map<String, Object>) components.get("securitySchemes");
+        @SuppressWarnings("unchecked")
         Map<String, Object> tokenPath = (Map<String, Object>) paths.get("/api/v1/auth/token");
         @SuppressWarnings("unchecked")
         Map<String, Object> companiesPath = (Map<String, Object>) paths.get("/api/v1/companies");
@@ -46,6 +50,7 @@ class OpenApiConfigTests {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> security = (List<Map<String, Object>>) companiesGet.get("security");
 
+        assertThat(securitySchemes).containsOnlyKeys("Login e senha");
         assertThat((List<?>) tokenPost.get("security")).isEmpty();
         assertThat(security).isNotEmpty();
         assertThat(security.getFirst()).containsKey("Login e senha");
