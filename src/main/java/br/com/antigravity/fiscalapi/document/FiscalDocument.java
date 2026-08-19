@@ -107,6 +107,28 @@ public class FiscalDocument {
         return document;
     }
 
+    /**
+     * Troca o conteudo de um documento que ainda nao foi autorizado.
+     *
+     * Existe porque reemitir a mesma referencia externa reaproveita este
+     * documento, e entre uma tentativa e outra a venda pode ter mudado. Sem
+     * isto, a tentativa seguinte reenviaria os itens da primeira e autorizaria
+     * uma nota que nao corresponde mais a venda — em silencio, que e o pior
+     * jeito de errar em documento fiscal.
+     *
+     * A numeracao nao entra aqui de proposito: serie e numero ja foram
+     * alocados e sao desta nota, aconteca o que acontecer com o conteudo.
+     */
+    public void replaceContent(BigDecimal totalAmount, String customerName, String payloadJson) {
+        if (this.status == DocumentStatus.AUTHORIZED) {
+            throw new IllegalStateException("Documento autorizado nao tem conteudo alterado");
+        }
+        this.totalAmount = totalAmount;
+        this.customerName = customerName;
+        this.payloadJson = payloadJson;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
     public void authorize(String authorizationNumber, String accessKey, String receiptContent) {
         this.status = DocumentStatus.AUTHORIZED;
         this.authorizationNumber = authorizationNumber;

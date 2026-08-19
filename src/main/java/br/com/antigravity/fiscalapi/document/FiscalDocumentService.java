@@ -67,7 +67,7 @@ public class FiscalDocumentService {
         FiscalDocument existing = documentRepository.findByCompany_IdAndExternalReference(company.getId(), request.externalReference())
             .orElse(null);
         if (existing != null) {
-            return resumeExistingIssue(existing);
+            return resumeExistingIssue(existing, request);
         }
 
         FiscalNumberAllocation allocation = allocateFiscalNumber(request);
@@ -333,12 +333,38 @@ public class FiscalDocumentService {
         throw new BadRequestException("Informe companyId ou tenantId + merchantId para emitir.");
     }
 
-    private DocumentResponse resumeExistingIssue(FiscalDocument document) {
+    /**
+     * Retoma um documento que ja existe para a mesma referencia externa.
+     *
+     * Autorizado nao se mexe: a nota ja esta na SEFAZ, e devolver o que existe
+     * e a resposta certa para quem pediu de novo.
+     *
+     * Nao autorizado, o pedido que acabou de chegar e a versao atual da venda,
+     * e nao o que foi mandado na primeira tentativa. Reprocessar com o payload
+     * antigo autorizaria uma nota que nao corresponde mais ao que o integrador
+     * pediu, sem aviso nenhum. Quando ha diferenca de verdade, o conteudo e
+     * substituido e isso fica registrado na auditoria — porque nota fiscal que
+     * muda de conteudo sem deixar rastro e o que ninguem consegue explicar
+     * depois.
+     */
+    private DocumentResponse resumeExistingIssue(FiscalDocument document, IssueDocumentRequest request) {
         if (document.getStatus() == DocumentStatus.AUTHORIZED) {
             return DocumentResponse.from(document);
         }
 
-        process(document, extractItems(document));
+        String payload = toPayload(request);
+        if (!payload.equals(document.getPayloadJson())) {
+            document.replaceContent(request.totalAmount(), request.customerName(), payload);
+            auditService.record(
+                document.getCompany().getId(),
+                document.getId(),
+                "DOCUMENT_CONTENT_REPLACED",
+                "Conteudo substituido pela nova emissao da mesma referencia externa",
+                document.getExternalReference()
+            );
+        }
+
+        process(document, request.items());
         return DocumentResponse.from(document);
     }
 
