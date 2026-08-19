@@ -15,6 +15,8 @@ import br.com.swconsultoria.nfe.exception.NfeException;
 import br.com.swconsultoria.nfe.schemas.TEnviNFe;
 import br.com.swconsultoria.nfe.schemas.TProtNFe;
 import br.com.swconsultoria.nfe.schemas.TRetEnviNFe;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -65,11 +67,10 @@ public class LibraryFiscalGateway implements FiscalGateway {
 
         FiscalXmlDraft draft = fiscalXmlBuilder.build(submission);
         TEnviNFe enviNFe = javaNfeMapper.toEnviNFe(draft);
-        String xmlPreview = fiscalXmlPreviewRenderer.render(draft);
         CertificateCredentials credentials = certificateCredentialResolver.resolve(company);
         try {
             ConfiguracoesNfe config = javaNfeConfigurationFactory.create(company, credentials);
-            TEnviNFe signedEnvelope = sign(config, enviNFe, xmlPreview);
+            TEnviNFe signedEnvelope = sign(config, enviNFe, draft);
             TRetEnviNFe response = send(config, signedEnvelope, submission.model());
             return toSubmissionResult(response);
         } finally {
@@ -83,13 +84,19 @@ public class LibraryFiscalGateway implements FiscalGateway {
         }
     }
 
-    private TEnviNFe sign(ConfiguracoesNfe config, TEnviNFe enviNFe, String xmlPreview) {
+    private TEnviNFe sign(ConfiguracoesNfe config, TEnviNFe enviNFe, FiscalXmlDraft draft) {
         try {
             return Nfe.montaNfe(config, enviNFe, true);
         } catch (NfeException ex) {
             throw new FiscalGatewayException(
-                "Falha ao assinar/validar XML fiscal: " + ex.getMessage()
-                    + " | Preview: " + xmlPreview.lines().findFirst().orElse("sem preview"),
+                "Falha ao assinar/validar XML fiscal: " + exceptionSummary(ex)
+                    + " | Rascunho: " + draftSummary(draft),
+                false
+            );
+        } catch (RuntimeException ex) {
+            throw new FiscalGatewayException(
+                "Falha inesperada ao assinar/validar XML fiscal: " + exceptionSummary(ex)
+                    + " | Rascunho: " + draftSummary(draft),
                 false
             );
         }
@@ -139,5 +146,36 @@ public class LibraryFiscalGateway implements FiscalGateway {
 
     private DocumentoEnum document(DocumentModel model) {
         return model == DocumentModel.NFE ? DocumentoEnum.NFE : DocumentoEnum.NFCE;
+    }
+
+    private String exceptionSummary(Throwable throwable) {
+        List<String> parts = new ArrayList<>();
+        Throwable current = throwable;
+        while (current != null && parts.size() < 5) {
+            String type = current.getClass().getSimpleName();
+            String message = current.getMessage();
+            parts.add(message == null || message.isBlank() ? type : type + ": " + message);
+            if (current.getCause() == current) {
+                break;
+            }
+            current = current.getCause();
+        }
+        return String.join(" <- ", parts);
+    }
+
+    private String draftSummary(FiscalXmlDraft draft) {
+        return "modelo=%s, serie=%s, numero=%s, ambiente=%s, chave=%s, emitente=%s, uf=%s, cMun=%s, itens=%s, total=%s"
+            .formatted(
+                draft.model(),
+                draft.seriesNumber(),
+                draft.invoiceNumber(),
+                draft.fiscalEnvironmentCode(),
+                draft.accessKey(),
+                draft.issuer().taxId(),
+                draft.issuer().stateCode(),
+                draft.issuer().cityCode(),
+                draft.items().size(),
+                draft.totalAmount()
+            );
     }
 }
