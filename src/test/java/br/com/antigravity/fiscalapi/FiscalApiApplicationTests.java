@@ -159,6 +159,64 @@ class FiscalApiApplicationTests {
     }
 
     @Test
+    void reusesExistingDocumentWhenExternalReferenceIsIssuedAgain() {
+        var company = companyService.create(new CreateCompanyRequest(
+            "tenant-idempotency",
+            "merchant-idempotency",
+            "https://integrator.example/webhooks/fiscal",
+            "Empresa Idempotente LTDA",
+            "92345678000199",
+            "923456789",
+            "BA",
+            "Empresa Idempotente",
+            "Rua Fiscal",
+            "200",
+            null,
+            "Centro",
+            "2927408",
+            "Salvador",
+            "40000000",
+            "7133334444",
+            TaxRegime.SIMPLES_NACIONAL,
+            FiscalEnvironment.HOMOLOGATION,
+            null,
+            null,
+            "000001",
+            "token-csc",
+            1,
+            1L,
+            1,
+            1L
+        ));
+
+        var firstIssue = fiscalDocumentService.issue(new IssueDocumentRequest(
+            company.id(),
+            null,
+            null,
+            DocumentModel.NFCE,
+            "PEDIDO-IDEMPOTENTE-1",
+            "Cliente Teste",
+            BigDecimal.valueOf(90),
+            List.of(item("A", "Produto A", BigDecimal.valueOf(90)))
+        ));
+
+        var secondIssue = fiscalDocumentService.issue(new IssueDocumentRequest(
+            company.id(),
+            null,
+            null,
+            DocumentModel.NFCE,
+            "PEDIDO-IDEMPOTENTE-1",
+            "Cliente Teste",
+            BigDecimal.valueOf(90),
+            List.of(item("A", "Produto A", BigDecimal.valueOf(90)))
+        ));
+
+        assertThat(secondIssue.id()).isEqualTo(firstIssue.id());
+        assertThat(secondIssue.invoiceNumber()).isEqualTo(firstIssue.invoiceNumber());
+        assertThat(secondIssue.seriesNumber()).isEqualTo(firstIssue.seriesNumber());
+    }
+
+    @Test
     void recordsOperationalLogsForSupportAndTroubleshooting() {
         operationalLogService.record(new OperationalLogRecord(
             "req-test-001",

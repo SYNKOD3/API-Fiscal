@@ -12,7 +12,6 @@ import br.com.antigravity.fiscalapi.fiscal.FiscalXmlDraft;
 import br.com.antigravity.fiscalapi.fiscal.FiscalXmlPreviewRenderer;
 import br.com.antigravity.fiscalapi.security.JwtSecurityContext;
 import br.com.antigravity.fiscalapi.shared.BadRequestException;
-import br.com.antigravity.fiscalapi.shared.ConflictException;
 import br.com.antigravity.fiscalapi.shared.NotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -62,14 +61,16 @@ public class FiscalDocumentService {
     public DocumentResponse issue(IssueDocumentRequest request) {
         validateTotals(request);
 
-        FiscalNumberAllocation allocation = allocateFiscalNumber(request);
-        Company company = allocation.company();
+        Company company = resolveCompany(request);
         jwtSecurityContext.requireCompanyAccess(company);
 
-        documentRepository.findByCompany_IdAndExternalReference(company.getId(), request.externalReference())
-            .ifPresent(existing -> {
-                throw new ConflictException("Ja existe documento para a referencia externa informada");
-            });
+        FiscalDocument existing = documentRepository.findByCompany_IdAndExternalReference(company.getId(), request.externalReference())
+            .orElse(null);
+        if (existing != null) {
+            return resumeExistingIssue(existing);
+        }
+
+        FiscalNumberAllocation allocation = allocateFiscalNumber(request);
 
         FiscalDocument document = FiscalDocument.create(
             company,
@@ -314,8 +315,31 @@ public class FiscalDocumentService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (itemsTotal.compareTo(request.totalAmount()) != 0) {
-            throw new ConflictException("Total dos itens nao confere com o total do documento");
+            throw new BadRequestException("Total dos itens nao confere com o total do documento");
         }
+    }
+
+    private Company resolveCompany(IssueDocumentRequest request) {
+        if (request.companyId() != null) {
+            return companyRepository.findById(request.companyId())
+                .orElseThrow(() -> new NotFoundException("Empresa nao encontrada"));
+        }
+
+        if (hasText(request.tenantId()) && hasText(request.merchantId())) {
+            return companyRepository.findByTenantIdAndMerchantId(request.tenantId(), request.merchantId())
+                .orElseThrow(() -> new NotFoundException("Empresa emissora nao encontrada para tenantId + merchantId"));
+        }
+
+        throw new BadRequestException("Informe companyId ou tenantId + merchantId para emitir.");
+    }
+
+    private DocumentResponse resumeExistingIssue(FiscalDocument document) {
+        if (document.getStatus() == DocumentStatus.AUTHORIZED) {
+            return DocumentResponse.from(document);
+        }
+
+        process(document, extractItems(document));
+        return DocumentResponse.from(document);
     }
 
     private FiscalNumberAllocation allocateFiscalNumber(IssueDocumentRequest request) {
