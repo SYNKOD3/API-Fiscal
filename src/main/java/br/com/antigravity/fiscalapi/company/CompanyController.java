@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -51,6 +52,21 @@ public class CompanyController {
                                                @Valid @RequestBody CreateCompanyRequest request,
                                                HttpServletRequest servletRequest) {
         CompanyResponse response = companyService.update(id, request);
+        OperationalRequestContext.attachCompany(servletRequest, response.id());
+        return ApiEnvelope.of(response);
+    }
+
+    @PatchMapping("/{id}/ibs-cbs")
+    @Operation(
+        summary = "Informar CST e classificação tributária do IBS/CBS",
+        description = "Grava apenas os dois códigos do IBS/CBS, sem exigir o cadastro completo da empresa. "
+            + "Eles são definidos pelo contador e determinam o tratamento tributário da venda: sem eles a "
+            + "SEFAZ recusa a nota com 1115, e com o código errado ela autoriza um documento incorreto."
+    )
+    public ApiEnvelope<CompanyResponse> updateIbsCbs(@PathVariable UUID id,
+                                                     @Valid @RequestBody UpdateIbsCbsRequest request,
+                                                     HttpServletRequest servletRequest) {
+        CompanyResponse response = companyService.updateIbsCbs(id, request);
         OperationalRequestContext.attachCompany(servletRequest, response.id());
         return ApiEnvelope.of(response);
     }

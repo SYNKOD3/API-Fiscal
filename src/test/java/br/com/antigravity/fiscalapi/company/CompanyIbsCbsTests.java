@@ -23,16 +23,44 @@ class CompanyIbsCbsTests {
 
     @Test
     void sincronizacaoSemOsCodigosMantemOsQueOContadorCadastrou() {
-        var criada = companyService.create(pedido("tenant-ibs", "merchant-ibs", "000", "000001"));
+        var criada = companyService.create(pedido("tenant-ibs-1", "merchant-ibs-1", "000", "000001"));
 
         assertThat(criada.ibsCbsCst()).isEqualTo("000");
         assertThat(criada.ibsCbsClassTrib()).isEqualTo("000001");
 
         // A sincronizacao da plataforma: manda a empresa toda, sem os codigos.
-        var apos = companyService.update(criada.id(), pedido("tenant-ibs", "merchant-ibs", null, null));
+        var apos = companyService.update(criada.id(), pedido("tenant-ibs-1", "merchant-ibs-1", null, null));
 
         assertThat(apos.ibsCbsCst()).isEqualTo("000");
         assertThat(apos.ibsCbsClassTrib()).isEqualTo("000001");
+    }
+
+    @Test
+    void aRotaDedicadaGravaSemExigirOCadastroInteiro() {
+        var criada = companyService.create(pedido("tenant-ibs-3", "merchant-ibs-3", null, null));
+
+        assertThat(criada.ibsCbsCst()).isNull();
+
+        var apos = companyService.updateIbsCbs(criada.id(), new UpdateIbsCbsRequest("000", "000001"));
+
+        assertThat(apos.ibsCbsCst()).isEqualTo("000");
+        assertThat(apos.ibsCbsClassTrib()).isEqualTo("000001");
+    }
+
+    /**
+     * O que a rota dedicada existe para evitar: no update completo, um campo
+     * ausente no corpo apaga o dado. Aqui o resto do cadastro nao e tocado.
+     */
+    @Test
+    void aRotaDedicadaNaoMexeNoRestoDoCadastro() {
+        var criada = companyService.create(pedido("tenant-ibs-4", "merchant-ibs-4", null, null));
+
+        var apos = companyService.updateIbsCbs(criada.id(), new UpdateIbsCbsRequest("200", "000002"));
+
+        assertThat(apos.legalName()).isEqualTo(criada.legalName());
+        assertThat(apos.taxId()).isEqualTo(criada.taxId());
+        assertThat(apos.nfceSeriesNumber()).isEqualTo(criada.nfceSeriesNumber());
+        assertThat(apos.nextNfceNumber()).isEqualTo(criada.nextNfceNumber());
     }
 
     @Test
@@ -48,7 +76,9 @@ class CompanyIbsCbsTests {
     private CreateCompanyRequest pedido(String tenantId, String merchantId, String cst, String classTrib) {
         // O CNPJ e unico por empresa; deriva-lo do tenant evita que dois testes
         // desta classe disputem o mesmo cadastro.
-        String taxId = "9234567800017" + (tenantId.endsWith("2") ? "2" : "1");
+        // Um CNPJ por tenant: o cadastro e unico por CNPJ, e sem isso dois
+        // testes desta classe disputariam a mesma empresa.
+        String taxId = "9234567800017" + tenantId.charAt(tenantId.length() - 1);
         return new CreateCompanyRequest(
             tenantId,
             merchantId,

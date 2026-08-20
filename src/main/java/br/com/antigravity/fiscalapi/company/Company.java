@@ -334,6 +334,13 @@ public class Company {
         return cscToken;
     }
 
+    /// Troca so os codigos do IBS/CBS, sem passar pelo cadastro inteiro.
+    public void updateIbsCbs(String ibsCbsCst, String ibsCbsClassTrib) {
+        this.ibsCbsCst = ibsCbsCst;
+        this.ibsCbsClassTrib = ibsCbsClassTrib;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
     public String getIbsCbsCst() {
         return ibsCbsCst;
     }

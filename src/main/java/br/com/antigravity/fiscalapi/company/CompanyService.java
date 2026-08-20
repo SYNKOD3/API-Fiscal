@@ -136,6 +136,37 @@ public class CompanyService {
         return response(saved);
     }
 
+    /**
+     * Informa apenas os codigos do IBS/CBS.
+     *
+     * Existe para nao obrigar quem cadastra um codigo tributario a reenviar a
+     * empresa inteira: no update completo, um campo esquecido no corpo apaga
+     * o dado correspondente. Aqui nao ha o que esquecer.
+     *
+     * A auditoria registra em evento proprio, e nao como "empresa atualizada":
+     * mudar tratamento tributario e outra coisa, e quem for conferir uma nota
+     * depois precisa achar isso sem garimpar.
+     */
+    @Transactional
+    public CompanyResponse updateIbsCbs(UUID id, UpdateIbsCbsRequest request) {
+        Company company = companyRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("Empresa nao encontrada"));
+        jwtSecurityContext.requireCompanyAccess(company);
+
+        company.updateIbsCbs(request.ibsCbsCst(), request.ibsCbsClassTrib());
+
+        Company saved = companyRepository.save(company);
+        auditService.record(
+            saved.getId(),
+            null,
+            "COMPANY_IBS_CBS_UPDATED",
+            "Codigos de IBS/CBS informados: CST %s, classificacao %s"
+                .formatted(request.ibsCbsCst(), request.ibsCbsClassTrib()),
+            saved.getTaxId()
+        );
+        return response(saved);
+    }
+
     @Transactional(readOnly = true)
     public List<CompanyResponse> list(String tenantId) {
         String constrainedTenant = jwtSecurityContext.constrainedTenant(tenantId);
