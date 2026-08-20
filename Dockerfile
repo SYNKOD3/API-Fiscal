@@ -8,7 +8,11 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 RUN useradd --system --create-home --home-dir /app fiscalapi
-RUN mkdir -p /var/lib/fiscal-api/certificates && chown -R fiscalapi:fiscalapi /var/lib/fiscal-api
+# A pasta de schemas nasce vazia de proposito: os XSD da SEFAZ nao vem na
+# java-nfe nem sao redistribuidos aqui. Vazia, a emissao segue sem validacao
+# local e o log avisa; monte um volume com os XSD para liga-la.
+RUN mkdir -p /var/lib/fiscal-api/certificates /var/lib/fiscal-api/schemas \
+    && chown -R fiscalapi:fiscalapi /var/lib/fiscal-api
 COPY --from=build /workspace/target/fiscal-api-0.0.1-SNAPSHOT.jar /app/fiscal-api.jar
 USER fiscalapi
 EXPOSE 8081

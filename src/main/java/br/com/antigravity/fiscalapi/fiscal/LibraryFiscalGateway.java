@@ -86,7 +86,10 @@ public class LibraryFiscalGateway implements FiscalGateway {
 
     private TEnviNFe sign(ConfiguracoesNfe config, TEnviNFe enviNFe, FiscalXmlDraft draft) {
         try {
-            return Nfe.montaNfe(config, enviNFe, true);
+            // A validacao so entra quando ha XSD em disco. Pedi-la sem os
+            // schemas nao valida nada: quebra a assinatura reclamando de
+            // arquivo, e a nota nem chega a ser tentada.
+            return Nfe.montaNfe(config, enviNFe, javaNfeConfigurationFactory.schemasDisponiveis());
         } catch (NfeException ex) {
             throw new FiscalGatewayException(
                 "Falha ao assinar/validar XML fiscal: " + exceptionSummary(ex)

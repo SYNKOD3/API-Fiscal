@@ -73,6 +73,8 @@ app:
     provider: ${FISCAL_PROVIDER:STUB}
     stub-online: ${FISCAL_STUB_ONLINE:true}
     unavailable-states: ${FISCAL_UNAVAILABLE_STATES:}
+    # Pasta com os XSD da SEFAZ. Ausente, a emissao segue sem validacao local.
+    schemas-path: ${FISCAL_SCHEMAS_PATH:schemas}
   retry:
     fixed-delay-ms: ${FISCAL_RETRY_DELAY_MS:30000}
     batch-size: ${FISCAL_RETRY_BATCH_SIZE:50}

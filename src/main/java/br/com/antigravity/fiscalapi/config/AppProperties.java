@@ -160,9 +160,29 @@ public class AppProperties {
         private Provider provider = Provider.STUB;
         private boolean stubOnline = true;
         private Set<String> unavailableStates = new HashSet<>();
+        /**
+         * Pasta com os XSD oficiais da SEFAZ, usada para validar o XML antes de
+         * assinar e transmitir.
+         *
+         * Os schemas nao vem na java-nfe (o jar dela nao traz nenhum XSD) e nao
+         * existem como artefato Maven: sao baixados a parte, do pacote de
+         * liberacao da SEFAZ. Enquanto a pasta nao existir, a emissao segue sem
+         * a validacao local — a SEFAZ valida do lado dela de qualquer forma, e
+         * derrubar a emissao por causa de um arquivo de apoio ausente seria
+         * trocar um risco pequeno por uma parada total.
+         */
+        private String schemasPath = "schemas";
 
         public Provider getProvider() {
             return provider;
+        }
+
+        public String getSchemasPath() {
+            return schemasPath;
+        }
+
+        public void setSchemasPath(String schemasPath) {
+            this.schemasPath = schemasPath;
         }
 
         public void setProvider(Provider provider) {
