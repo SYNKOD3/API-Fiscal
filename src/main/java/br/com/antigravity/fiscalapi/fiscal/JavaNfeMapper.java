@@ -17,6 +17,22 @@ import org.springframework.stereotype.Component;
 public class JavaNfeMapper {
 
     private static final String NFE_NAMESPACE = "http://www.portalfiscal.inf.br/nfe";
+
+    /**
+     * Formato de data-hora da NF-e: segundos e o fuso, sem fracao.
+     *
+     * O TDateTimeUTC do layout 4.00 termina em ss e vai direto para o fuso —
+     * milissegundo ali e schema invalido. ISO_OFFSET_DATE_TIME nao serve
+     * porque imprime a fracao quando o instante tem, e o instante vem de
+     * OffsetDateTime.now(), que sempre tem. O resultado era a SEFAZ devolvendo
+     * "225 - Falha no Schema XML do lote de NFe", que nao nomeia o campo.
+     *
+     * O 'xxx' minusculo tambem e proposital: o 'XXX' maiusculo imprimiria "Z"
+     * num fuso zero, e a NF-e so aceita deslocamento explicito.
+     */
+    private static final DateTimeFormatter DATA_HORA_FISCAL =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxx");
+
     private final ObjectFactory factory = new ObjectFactory();
 
     public TEnviNFe toEnviNFe(FiscalXmlDraft draft) {
@@ -51,7 +67,7 @@ public class JavaNfeMapper {
         ide.setMod(draft.model() == DocumentModel.NFE ? "55" : "65");
         ide.setSerie(String.valueOf(draft.seriesNumber()));
         ide.setNNF(String.valueOf(draft.invoiceNumber()));
-        ide.setDhEmi(draft.issuedAt().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        ide.setDhEmi(draft.issuedAt().format(DATA_HORA_FISCAL));
         ide.setTpNF("1");
         ide.setIdDest("1");
         ide.setCMunFG(draft.issuer().cityCode());
