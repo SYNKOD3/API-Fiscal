@@ -30,6 +30,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
     private final JavaNfeConfigurationFactory javaNfeConfigurationFactory;
     private final SefazRouter sefazRouter;
     private final CertificateCredentialResolver certificateCredentialResolver;
+    private final NfceQrCodeFactory nfceQrCodeFactory;
 
     public LibraryFiscalGateway(AppProperties properties,
                                 CompanyRepository companyRepository,
@@ -38,7 +39,8 @@ public class LibraryFiscalGateway implements FiscalGateway {
                                 JavaNfeMapper javaNfeMapper,
                                 JavaNfeConfigurationFactory javaNfeConfigurationFactory,
                                 SefazRouter sefazRouter,
-                                CertificateCredentialResolver certificateCredentialResolver) {
+                                CertificateCredentialResolver certificateCredentialResolver,
+                                NfceQrCodeFactory nfceQrCodeFactory) {
         this.properties = properties;
         this.companyRepository = companyRepository;
         this.fiscalXmlBuilder = fiscalXmlBuilder;
@@ -47,6 +49,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
         this.javaNfeConfigurationFactory = javaNfeConfigurationFactory;
         this.sefazRouter = sefazRouter;
         this.certificateCredentialResolver = certificateCredentialResolver;
+        this.nfceQrCodeFactory = nfceQrCodeFactory;
     }
 
     @Override
@@ -70,6 +73,9 @@ public class LibraryFiscalGateway implements FiscalGateway {
         CertificateCredentials credentials = certificateCredentialResolver.resolve(company);
         try {
             ConfiguracoesNfe config = javaNfeConfigurationFactory.create(company, credentials);
+            // Antes de assinar: a assinatura cobre o infNFe, e o suplemento e
+            // irmao dele. Depois, o XML ja estaria fechado.
+            nfceQrCodeFactory.aplicar(enviNFe, draft, config);
             TEnviNFe signedEnvelope = sign(config, enviNFe, draft);
             TRetEnviNFe response = send(config, signedEnvelope, submission.model());
             return toSubmissionResult(response);
