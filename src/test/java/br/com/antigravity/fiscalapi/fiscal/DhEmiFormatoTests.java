@@ -37,6 +37,25 @@ class DhEmiFormatoTests {
             .matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[-+]\\d{2}:\\d{2}");
     }
 
+    /**
+     * O cDV aparece duas vezes no documento de proposito: fecha a chave de
+     * acesso e ainda ocupa um elemento proprio no ide. Faltava o elemento —
+     * o Id saia com os 44 digitos certos, e nada na chave denunciava a
+     * ausencia. A SEFAZ so dizia "225", sem nomear o campo.
+     */
+    @Test
+    void ideTrazOCdvEEleFechaAChaveDeAcesso() {
+        var infNFe = mapper.toEnviNFe(rascunhoEmitidoEm(OffsetDateTime.now()))
+            .getNFe().get(0).getInfNFe();
+
+        String chave = infNFe.getId().substring("NFe".length());
+
+        assertThat(chave).hasSize(44);
+        assertThat(infNFe.getIde().getCDV())
+            .as("o cDV do ide e o ultimo digito da chave, nao outro numero")
+            .isEqualTo(chave.substring(43));
+    }
+
     @Test
     void instanteComNanosConhecidosPerdeApenasAFracao() {
         OffsetDateTime comNanos = OffsetDateTime.parse("2026-08-20T01:23:45.678901-03:00");

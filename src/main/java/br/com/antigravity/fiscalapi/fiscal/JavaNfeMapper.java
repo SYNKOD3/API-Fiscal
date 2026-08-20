@@ -73,6 +73,11 @@ public class JavaNfeMapper {
         ide.setCMunFG(draft.issuer().cityCode());
         ide.setTpImp(draft.model() == DocumentModel.NFE ? "1" : "4");
         ide.setTpEmis(draft.emissionType());
+        // O digito verificador vai em dobro de proposito no layout: fecha a
+        // chave de acesso e ainda aparece sozinho aqui, entre tpEmis e tpAmb.
+        // Faltava desde a primeira versao — o Id saia com os 44 digitos certos
+        // e o <cDV> nao existia, quebrando a sequencia obrigatoria do <ide>.
+        ide.setCDV(draft.checkDigit());
         ide.setTpAmb(draft.fiscalEnvironmentCode());
         ide.setFinNFe("1");
         ide.setIndFinal(draft.model() == DocumentModel.NFCE ? "1" : "0");
