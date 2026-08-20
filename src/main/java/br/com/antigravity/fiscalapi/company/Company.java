@@ -82,6 +82,22 @@ public class Company {
     @Column(length = 2048)
     private String cscToken;
 
+    /**
+     * CST e classificacao tributaria do IBS/CBS, da reforma tributaria.
+     *
+     * Ficam no cadastro porque sao decisao do contador da empresa, nao do
+     * software: definem o tratamento tributario da venda, e o schema aceita
+     * qualquer numero no formato — um codigo errado gera documento que a
+     * SEFAZ autoriza e que entra errado na escrituracao, o que e pior do que
+     * uma rejeicao. Nulos enquanto o contador nao informa; sem eles o grupo
+     * nao vai no XML, e a SEFAZ recusa com 1115, que e o desfecho visivel.
+     */
+    @Column(length = 3)
+    private String ibsCbsCst;
+
+    @Column(length = 6)
+    private String ibsCbsClassTrib;
+
     @Column(nullable = false)
     private int nfeSeriesNumber;
 
@@ -125,6 +141,8 @@ public class Company {
                                  String certificatePassword,
                                  String cscId,
                                  String cscToken,
+                                 String ibsCbsCst,
+                                 String ibsCbsClassTrib,
                                  Integer nfeSeriesNumber,
                                  Long nextNfeNumber,
                                  Integer nfceSeriesNumber,
@@ -153,6 +171,8 @@ public class Company {
         company.certificatePassword = certificatePassword;
         company.cscId = cscId;
         company.cscToken = cscToken;
+        company.ibsCbsCst = ibsCbsCst;
+        company.ibsCbsClassTrib = ibsCbsClassTrib;
         company.nfeSeriesNumber = nfeSeriesNumber == null ? 1 : nfeSeriesNumber;
         company.nextNfeNumber = nextNfeNumber == null ? 1 : nextNfeNumber;
         company.nfceSeriesNumber = nfceSeriesNumber == null ? 1 : nfceSeriesNumber;
@@ -183,6 +203,8 @@ public class Company {
                                  FiscalEnvironment fiscalEnvironment,
                                  String cscId,
                                  String cscToken,
+                                 String ibsCbsCst,
+                                 String ibsCbsClassTrib,
                                  Integer nfeSeriesNumber,
                                  Long nextNfeNumber,
                                  Integer nfceSeriesNumber,
@@ -207,6 +229,12 @@ public class Company {
         this.fiscalEnvironment = fiscalEnvironment == null ? FiscalEnvironment.HOMOLOGATION : fiscalEnvironment;
         this.cscId = cscId;
         this.cscToken = cscToken;
+        // Nulo mantem o que esta, como nos contadores. A plataforma integradora
+        // sincroniza a empresa antes de cada emissao e nao conhece estes
+        // campos: sobrescrever com o que ela nao mandou apagaria, a cada venda,
+        // justamente os codigos que o contador cadastrou.
+        this.ibsCbsCst = ibsCbsCst == null ? this.ibsCbsCst : ibsCbsCst;
+        this.ibsCbsClassTrib = ibsCbsClassTrib == null ? this.ibsCbsClassTrib : ibsCbsClassTrib;
         this.nfeSeriesNumber = nfeSeriesNumber == null ? this.nfeSeriesNumber : nfeSeriesNumber;
         this.nextNfeNumber = nextNfeNumber == null ? this.nextNfeNumber : nextNfeNumber;
         this.nfceSeriesNumber = nfceSeriesNumber == null ? this.nfceSeriesNumber : nfceSeriesNumber;
@@ -304,6 +332,14 @@ public class Company {
 
     public String getCscToken() {
         return cscToken;
+    }
+
+    public String getIbsCbsCst() {
+        return ibsCbsCst;
+    }
+
+    public String getIbsCbsClassTrib() {
+        return ibsCbsClassTrib;
     }
 
     public int getNfeSeriesNumber() {

@@ -34,6 +34,8 @@ class FiscalXmlBuilderTests {
             "40000000",
             "7133334444",
             "1",
+            null,
+            null,
             "2",
             OffsetDateTime.parse("2026-08-13T18:00:00-03:00"),
             7,

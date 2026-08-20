@@ -24,6 +24,11 @@ public record FiscalSubmission(
     String companyZipCode,
     String companyPhone,
     String companyTaxRegimeCode,
+    /// CST e classificacao tributaria do IBS/CBS, do cadastro da empresa.
+    /// Nulos enquanto o contador nao informa, e nesse caso o grupo nao vai
+    /// no XML — a SEFAZ recusa com 1115, que e o desfecho visivel.
+    String ibsCbsCst,
+    String ibsCbsClassTrib,
     String fiscalEnvironmentCode,
     OffsetDateTime issuedAt,
     int seriesNumber,

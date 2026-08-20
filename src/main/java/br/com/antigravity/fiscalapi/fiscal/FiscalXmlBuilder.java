@@ -67,7 +67,9 @@ public class FiscalXmlBuilder {
             submission.companyCityName(),
             submission.companyZipCode(),
             submission.companyPhone(),
-            submission.companyTaxRegimeCode()
+            submission.companyTaxRegimeCode(),
+            submission.ibsCbsCst(),
+            submission.ibsCbsClassTrib()
         );
     }
 }

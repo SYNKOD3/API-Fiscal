@@ -68,6 +68,8 @@ class JaxbContextTests {
             "01000000",
             "1133334444",
             "1",
+            null,
+            null,
             "2",
             OffsetDateTime.parse("2026-08-19T18:00:00-03:00"),
             1,

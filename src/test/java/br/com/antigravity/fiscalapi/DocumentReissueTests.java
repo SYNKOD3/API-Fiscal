@@ -59,6 +59,8 @@ class DocumentReissueTests {
             null,
             "000001",
             "token-csc",
+            null,
+            null,
             1,
             1L,
             1,

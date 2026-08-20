@@ -14,6 +14,8 @@ public record FiscalIssuerDraft(
     String cityName,
     String zipCode,
     String phone,
-    String taxRegimeCode
+    String taxRegimeCode,
+    String ibsCbsCst,
+    String ibsCbsClassTrib
 ) {
 }

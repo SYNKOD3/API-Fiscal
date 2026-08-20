@@ -220,6 +220,8 @@ public class FiscalDocumentService {
             document.getCompany().getZipCode(),
             document.getCompany().getPhone(),
             document.getCompany().getTaxRegime().getNfeCode(),
+            document.getCompany().getIbsCbsCst(),
+            document.getCompany().getIbsCbsClassTrib(),
             environmentCode(document.getCompany().getFiscalEnvironment()),
             issuedAt,
             document.getSeriesNumber(),

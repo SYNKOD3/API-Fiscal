@@ -156,6 +156,8 @@ class PerformanceSmokeTests {
             null,
             "000001",
             "token-csc",
+            null,
+            null,
             3,
             10L,
             7,

@@ -25,6 +25,10 @@ public record CompanyResponse(
     FiscalEnvironment fiscalEnvironment,
     boolean certificateConfigured,
     boolean cscConfigured,
+    /// Devolvidos como estao: sao codigos de cadastro, nao segredo, e quem
+    /// integra precisa conseguir conferir o que foi gravado.
+    String ibsCbsCst,
+    String ibsCbsClassTrib,
     int nfeSeriesNumber,
     long nextNfeNumber,
     int nfceSeriesNumber,
@@ -61,6 +65,8 @@ public record CompanyResponse(
             certificateConfigured,
             company.getCscId() != null && !company.getCscId().isBlank()
                 && company.getCscToken() != null && !company.getCscToken().isBlank(),
+            company.getIbsCbsCst(),
+            company.getIbsCbsClassTrib(),
             company.getNfeSeriesNumber(),
             company.getNextNfeNumber(),
             company.getNfceSeriesNumber(),

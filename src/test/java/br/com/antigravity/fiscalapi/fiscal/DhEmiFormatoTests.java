@@ -84,6 +84,8 @@ class DhEmiFormatoTests {
             "01000000",
             "1133334444",
             "1",
+            null,
+            null,
             "2",
             issuedAt,
             1,

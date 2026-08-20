@@ -50,6 +50,20 @@ public record CreateCompanyRequest(
     String cscId,
     @Schema(description = "CSC/token para NFC-e, quando aplicável.", example = "token-csc")
     String cscToken,
+    @Schema(
+        description = "CST do IBS/CBS (reforma tributária), 3 dígitos. Definido pelo contador "
+            + "da empresa. Na atualização, ausente mantém o valor já cadastrado.",
+        example = "000"
+    )
+    @Pattern(regexp = "\\d{3}", message = "O CST do IBS/CBS tem 3 dígitos.")
+    String ibsCbsCst,
+    @Schema(
+        description = "Classificação tributária do IBS/CBS, 6 dígitos. Definida pelo contador "
+            + "da empresa. Na atualização, ausente mantém o valor já cadastrado.",
+        example = "000001"
+    )
+    @Pattern(regexp = "\\d{6}", message = "A classificação tributária do IBS/CBS tem 6 dígitos.")
+    String ibsCbsClassTrib,
     @Schema(description = "Série da NF-e.", example = "1")
     @Positive Integer nfeSeriesNumber,
     @Schema(description = "Próximo número de NF-e.", example = "1")

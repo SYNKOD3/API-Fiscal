@@ -5,10 +5,12 @@ import br.com.swconsultoria.nfe.schemas.ObjectFactory;
 import br.com.swconsultoria.nfe.schemas.TEnviNFe;
 import br.com.swconsultoria.nfe.schemas.TEnderEmi;
 import br.com.swconsultoria.nfe.schemas.TNFe;
+import br.com.swconsultoria.nfe.schemas.TTribNFe;
 import br.com.swconsultoria.nfe.schemas.TUfEmi;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 import java.util.Set;
 import javax.xml.bind.JAXBElement;
 import javax.xml.namespace.QName;
@@ -125,7 +127,7 @@ public class JavaNfeMapper {
         TNFe.InfNFe.Det det = factory.createTNFeInfNFeDet();
         det.setNItem(String.valueOf(item.itemNumber()));
         det.setProd(toProd(draft, item));
-        det.setImposto(toImposto(item));
+        det.setImposto(toImposto(draft, item));
         return det;
     }
 
@@ -172,12 +174,36 @@ public class JavaNfeMapper {
             : item.description();
     }
 
-    private TNFe.InfNFe.Det.Imposto toImposto(FiscalXmlItemDraft item) {
+    private TNFe.InfNFe.Det.Imposto toImposto(FiscalXmlDraft draft, FiscalXmlItemDraft item) {
         TNFe.InfNFe.Det.Imposto imposto = factory.createTNFeInfNFeDetImposto();
         imposto.getContent().add(element("ICMS", toIcms(item)));
         imposto.getContent().add(element("PIS", toPis(item)));
         imposto.getContent().add(element("COFINS", toCofins(item)));
+        toIbsCbs(draft).ifPresent(tributo -> imposto.getContent().add(element("IBSCBS", tributo)));
         return imposto;
+    }
+
+    /**
+     * IBS e CBS, da reforma tributaria — vazio enquanto o contador nao decidir.
+     *
+     * O CST e a classificacao tributaria definem o tratamento da venda, e o
+     * schema aceita qualquer numero no formato: nao ha valor padrao que sirva
+     * para toda empresa, e chutar um geraria documento que a SEFAZ autoriza e
+     * que entra errado na escrituracao. Por isso vem do cadastro, e por isso a
+     * ausencia deles omite o grupo em vez de inventar conteudo — a SEFAZ
+     * recusa com 1115, que e o desfecho visivel e corrigivel.
+     */
+    private Optional<TTribNFe> toIbsCbs(FiscalXmlDraft draft) {
+        String cst = draft.issuer().ibsCbsCst();
+        String classTrib = draft.issuer().ibsCbsClassTrib();
+        if (cst == null || cst.isBlank() || classTrib == null || classTrib.isBlank()) {
+            return Optional.empty();
+        }
+
+        TTribNFe tributo = factory.createTTribNFe();
+        tributo.setCST(cst);
+        tributo.setCClassTrib(classTrib);
+        return Optional.of(tributo);
     }
 
     private TNFe.InfNFe.Det.Imposto.ICMS toIcms(FiscalXmlItemDraft item) {
