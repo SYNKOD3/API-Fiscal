@@ -52,7 +52,7 @@ public class JavaNfeMapper {
         infNFe.setId(draft.invoiceId());
         infNFe.setIde(toIde(draft));
         infNFe.setEmit(toEmit(draft));
-        draft.items().forEach(item -> infNFe.getDet().add(toDet(item)));
+        draft.items().forEach(item -> infNFe.getDet().add(toDet(draft, item)));
         infNFe.setTotal(toTotal(draft));
         infNFe.setTransp(toTransp());
         infNFe.setPag(toPag(draft));
@@ -121,19 +121,19 @@ public class JavaNfeMapper {
         return address;
     }
 
-    private TNFe.InfNFe.Det toDet(FiscalXmlItemDraft item) {
+    private TNFe.InfNFe.Det toDet(FiscalXmlDraft draft, FiscalXmlItemDraft item) {
         TNFe.InfNFe.Det det = factory.createTNFeInfNFeDet();
         det.setNItem(String.valueOf(item.itemNumber()));
-        det.setProd(toProd(item));
+        det.setProd(toProd(draft, item));
         det.setImposto(toImposto(item));
         return det;
     }
 
-    private TNFe.InfNFe.Det.Prod toProd(FiscalXmlItemDraft item) {
+    private TNFe.InfNFe.Det.Prod toProd(FiscalXmlDraft draft, FiscalXmlItemDraft item) {
         TNFe.InfNFe.Det.Prod prod = factory.createTNFeInfNFeDetProd();
         prod.setCProd(item.sku());
         prod.setCEAN(gtin(item.gtin()));
-        prod.setXProd(item.description());
+        prod.setXProd(descricaoDoProduto(draft, item));
         prod.setNCM(item.ncm());
         if (item.cest() != null && !item.cest().isBlank()) {
             prod.setCEST(item.cest());
@@ -149,6 +149,27 @@ public class JavaNfeMapper {
         prod.setVUnTrib(decimal(item.unitAmount(), 10));
         prod.setIndTot("1");
         return prod;
+    }
+
+    /**
+     * Em homologacao, a descricao do primeiro item e ditada pela SEFAZ.
+     *
+     * A regra existe para que nenhuma nota de teste possa ser confundida com
+     * uma real: o primeiro item precisa dizer, com todas as letras, que o
+     * documento nao tem valor fiscal. Fora dela vem a rejeicao 373, que ao
+     * menos e explicita sobre o que espera.
+     *
+     * Vale so para o primeiro item — os demais mantem a descricao de verdade,
+     * senao a nota de teste deixaria de exercitar o que se quer testar.
+     */
+    private static final String DESCRICAO_HOMOLOGACAO =
+        "NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL";
+
+    private String descricaoDoProduto(FiscalXmlDraft draft, FiscalXmlItemDraft item) {
+        boolean homologacao = "2".equals(draft.fiscalEnvironmentCode());
+        return homologacao && item.itemNumber() == 1
+            ? DESCRICAO_HOMOLOGACAO
+            : item.description();
     }
 
     private TNFe.InfNFe.Det.Imposto toImposto(FiscalXmlItemDraft item) {
