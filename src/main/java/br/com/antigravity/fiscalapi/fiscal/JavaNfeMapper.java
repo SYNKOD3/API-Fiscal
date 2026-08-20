@@ -9,6 +9,7 @@ import br.com.swconsultoria.nfe.schemas.TUfEmi;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
+import java.util.Set;
 import javax.xml.bind.JAXBElement;
 import javax.xml.namespace.QName;
 import org.springframework.stereotype.Component;
@@ -167,19 +168,52 @@ public class JavaNfeMapper {
         return icms;
     }
 
+    /**
+     * O CST decide o grupo, e o grupo errado e schema invalido.
+     *
+     * PISNT/COFINSNT sao "nao tributado" e so aceitam 04 a 09. O 49 — que e o
+     * que o Simples Nacional usa, e o que chega aqui — e "outras operacoes", e
+     * mora em PISOutr/COFINSOutr, com base, aliquota e valor. Mandar 49 dentro
+     * de NT fazia a SEFAZ recusar o lote inteiro com 225, sem dizer o campo.
+     */
+    private static final Set<String> CST_NAO_TRIBUTADO =
+        Set.of("04", "05", "06", "07", "08", "09");
+
     private TNFe.InfNFe.Det.Imposto.PIS toPis(FiscalXmlItemDraft item) {
         TNFe.InfNFe.Det.Imposto.PIS pis = factory.createTNFeInfNFeDetImpostoPIS();
-        TNFe.InfNFe.Det.Imposto.PIS.PISNT pisnt = factory.createTNFeInfNFeDetImpostoPISPISNT();
-        pisnt.setCST(item.pisCode());
-        pis.setPISNT(pisnt);
+        if (CST_NAO_TRIBUTADO.contains(item.pisCode())) {
+            TNFe.InfNFe.Det.Imposto.PIS.PISNT pisnt = factory.createTNFeInfNFeDetImpostoPISPISNT();
+            pisnt.setCST(item.pisCode());
+            pis.setPISNT(pisnt);
+            return pis;
+        }
+
+        TNFe.InfNFe.Det.Imposto.PIS.PISOutr outr = factory.createTNFeInfNFeDetImpostoPISPISOutr();
+        outr.setCST(item.pisCode());
+        outr.setVBC(decimal(BigDecimal.ZERO, 2));
+        outr.setPPIS(decimal(BigDecimal.ZERO, 4));
+        outr.setVPIS(decimal(BigDecimal.ZERO, 2));
+        pis.setPISOutr(outr);
         return pis;
     }
 
     private TNFe.InfNFe.Det.Imposto.COFINS toCofins(FiscalXmlItemDraft item) {
         TNFe.InfNFe.Det.Imposto.COFINS cofins = factory.createTNFeInfNFeDetImpostoCOFINS();
-        TNFe.InfNFe.Det.Imposto.COFINS.COFINSNT cofinsnt = factory.createTNFeInfNFeDetImpostoCOFINSCOFINSNT();
-        cofinsnt.setCST(item.cofinsCode());
-        cofins.setCOFINSNT(cofinsnt);
+        if (CST_NAO_TRIBUTADO.contains(item.cofinsCode())) {
+            TNFe.InfNFe.Det.Imposto.COFINS.COFINSNT cofinsnt =
+                factory.createTNFeInfNFeDetImpostoCOFINSCOFINSNT();
+            cofinsnt.setCST(item.cofinsCode());
+            cofins.setCOFINSNT(cofinsnt);
+            return cofins;
+        }
+
+        TNFe.InfNFe.Det.Imposto.COFINS.COFINSOutr outr =
+            factory.createTNFeInfNFeDetImpostoCOFINSCOFINSOutr();
+        outr.setCST(item.cofinsCode());
+        outr.setVBC(decimal(BigDecimal.ZERO, 2));
+        outr.setPCOFINS(decimal(BigDecimal.ZERO, 4));
+        outr.setVCOFINS(decimal(BigDecimal.ZERO, 2));
+        cofins.setCOFINSOutr(outr);
         return cofins;
     }
 
