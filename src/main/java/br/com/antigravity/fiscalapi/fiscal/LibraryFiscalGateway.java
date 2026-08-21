@@ -31,6 +31,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
     private final SefazRouter sefazRouter;
     private final CertificateCredentialResolver certificateCredentialResolver;
     private final NfceQrCodeFactory nfceQrCodeFactory;
+    private final IbsCbsFactory ibsCbsFactory;
 
     public LibraryFiscalGateway(AppProperties properties,
                                 CompanyRepository companyRepository,
@@ -40,7 +41,8 @@ public class LibraryFiscalGateway implements FiscalGateway {
                                 JavaNfeConfigurationFactory javaNfeConfigurationFactory,
                                 SefazRouter sefazRouter,
                                 CertificateCredentialResolver certificateCredentialResolver,
-                                NfceQrCodeFactory nfceQrCodeFactory) {
+                                NfceQrCodeFactory nfceQrCodeFactory,
+                                IbsCbsFactory ibsCbsFactory) {
         this.properties = properties;
         this.companyRepository = companyRepository;
         this.fiscalXmlBuilder = fiscalXmlBuilder;
@@ -50,6 +52,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
         this.sefazRouter = sefazRouter;
         this.certificateCredentialResolver = certificateCredentialResolver;
         this.nfceQrCodeFactory = nfceQrCodeFactory;
+        this.ibsCbsFactory = ibsCbsFactory;
     }
 
     @Override
@@ -75,6 +78,10 @@ public class LibraryFiscalGateway implements FiscalGateway {
             ConfiguracoesNfe config = javaNfeConfigurationFactory.create(company, credentials);
             // Antes de assinar: a assinatura cobre o infNFe, e o suplemento e
             // irmao dele. Depois, o XML ja estaria fechado.
+            // O IBS/CBS vem antes do QR Code porque mexe no total da nota, e o
+            // QR Code v3 nao carrega valor — mas a ordem inversa deixaria um
+            // total no XML e outro no codigo se isso mudar.
+            ibsCbsFactory.aplicar(enviNFe, draft, config);
             nfceQrCodeFactory.aplicar(enviNFe, draft, config);
             TEnviNFe signedEnvelope = sign(config, enviNFe, draft);
             TRetEnviNFe response = send(config, signedEnvelope, submission.model());

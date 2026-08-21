@@ -5,12 +5,10 @@ import br.com.swconsultoria.nfe.schemas.ObjectFactory;
 import br.com.swconsultoria.nfe.schemas.TEnviNFe;
 import br.com.swconsultoria.nfe.schemas.TEnderEmi;
 import br.com.swconsultoria.nfe.schemas.TNFe;
-import br.com.swconsultoria.nfe.schemas.TTribNFe;
 import br.com.swconsultoria.nfe.schemas.TUfEmi;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
 import java.util.Set;
 import javax.xml.bind.JAXBElement;
 import javax.xml.namespace.QName;
@@ -179,35 +177,7 @@ public class JavaNfeMapper {
         imposto.getContent().add(element("ICMS", toIcms(item)));
         imposto.getContent().add(element("PIS", toPis(item)));
         imposto.getContent().add(element("COFINS", toCofins(item)));
-        toIbsCbs(item).ifPresent(tributo -> imposto.getContent().add(element("IBSCBS", tributo)));
         return imposto;
-    }
-
-    /**
-     * IBS e CBS, da reforma tributaria — por item, como manda o layout.
-     *
-     * O grupo mora em det/imposto, ao lado do ICMS e do PIS: dois produtos com
-     * tratamentos diferentes levam codigos diferentes na mesma nota. O codigo
-     * da empresa e apenas o padrao de quem nao tem tratamento proprio, e a
-     * escolha entre um e outro ja foi feita ao montar o rascunho.
-     *
-     * O CST e a classificacao definem o tratamento tributario, e o schema
-     * aceita qualquer numero no formato: chutar um valor geraria documento que
-     * a SEFAZ autoriza e que entra errado na escrituracao. Por isso a ausencia
-     * omite o grupo em vez de inventar conteudo — a SEFAZ recusa com 1115, que
-     * e o desfecho visivel e corrigivel.
-     */
-    private Optional<TTribNFe> toIbsCbs(FiscalXmlItemDraft item) {
-        String cst = item.ibsCbsCst();
-        String classTrib = item.ibsCbsClassTrib();
-        if (cst == null || cst.isBlank() || classTrib == null || classTrib.isBlank()) {
-            return Optional.empty();
-        }
-
-        TTribNFe tributo = factory.createTTribNFe();
-        tributo.setCST(cst);
-        tributo.setCClassTrib(classTrib);
-        return Optional.of(tributo);
     }
 
     private TNFe.InfNFe.Det.Imposto.ICMS toIcms(FiscalXmlItemDraft item) {
