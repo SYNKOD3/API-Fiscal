@@ -67,6 +67,23 @@ class IbsCbsFactoryTests {
             .isEqualTo(antes);
     }
 
+    /**
+     * O vNF e o total comercial da nota, e precisa fechar com o vPag — a soma
+     * do que o cliente pagou. Os valores de IBS e CBS vao no grupo proprio,
+     * IBSCBSTot; soma-los ao vNF inflava a nota acima do pagamento e a SEFAZ
+     * recusava com 865, inventando dinheiro que ninguem recebeu.
+     */
+    @Test
+    void oTotalDaNotaContinuaFechandoComOPagamento() {
+        var enviNFe = comIbsCbs("000001");
+
+        factory.aplicar(enviNFe, draft("000001"), new ConfiguracoesNfe());
+
+        var infNFe = enviNFe.getNFe().get(0).getInfNFe();
+        assertThat(infNFe.getTotal().getICMSTot().getVNF())
+            .isEqualTo(infNFe.getPag().getDetPag().get(0).getVPag());
+    }
+
     private TTribNFe grupoIbsCbs(TEnviNFe enviNFe) {
         return enviNFe.getNFe().get(0).getInfNFe().getDet().get(0).getImposto().getContent().stream()
             .map(conteudo -> conteudo instanceof javax.xml.bind.JAXBElement<?> elemento

@@ -73,13 +73,12 @@ public class IbsCbsFactory {
                 );
             }
 
+            // Os valores de IBS e CBS vao no grupo proprio, IBSCBSTot. O vNF
+            // continua sendo o total comercial da nota — o que o cliente
+            // pagou. Soma-los ali inflava a nota acima do vPag e a SEFAZ
+            // recusava com 865, "total dos pagamentos menor que o total da
+            // nota": dinheiro que ninguem recebeu.
             infNFe.getTotal().setIBSCBSTot(util.preencheTotaisIbsCsb());
-            // O IBS e a CBS entram por fora do preço, então o total da nota
-            // muda. Deixar o vNF antigo faria a soma dos grupos não fechar com
-            // o total — que é conferência que a SEFAZ faz.
-            infNFe.getTotal().getICMSTot().setVNF(
-                util.calculaVnfTot(infNFe.getTotal().getICMSTot().getVNF()).toPlainString()
-            );
         } catch (Exception ex) {
             // Mesma regra da tabela: falhar aqui recusa a nota com mensagem, e
             // isso é melhor do que derrubar a venda ou emitir valor inventado.
