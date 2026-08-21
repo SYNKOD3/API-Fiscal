@@ -13,10 +13,16 @@ import br.com.swconsultoria.nfe.dom.ConfiguracoesNfe;
 import br.com.swconsultoria.nfe.dom.enuns.DocumentoEnum;
 import br.com.swconsultoria.nfe.exception.NfeException;
 import br.com.swconsultoria.nfe.schemas.TEnviNFe;
+import br.com.swconsultoria.nfe.dom.Evento;
+import br.com.swconsultoria.nfe.schemas_eventos.TEnvEventoCancelamento;
+import br.com.swconsultoria.nfe.schemas_eventos.TRetEnvEventoCancelamento;
+import br.com.swconsultoria.nfe.util.CancelamentoUtil;
 import br.com.swconsultoria.nfe.schemas.TProtNFe;
 import br.com.swconsultoria.nfe.schemas.TRetEnviNFe;
 import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -89,6 +95,70 @@ public class LibraryFiscalGateway implements FiscalGateway {
         } finally {
             credentials.cleanup();
         }
+    }
+
+    @Override
+    public FiscalCancellationResult cancel(UUID companyId, FiscalCancellation cancellation) {
+        Company company = companyRepository.findById(companyId)
+            .orElseThrow(() -> new NotFoundException("Empresa emissora nao encontrada"));
+        validateFiscalConfiguration(company);
+
+        CertificateCredentials credentials = certificateCredentialResolver.resolve(company);
+        try {
+            ConfiguracoesNfe config = javaNfeConfigurationFactory.create(company, credentials);
+
+            Evento evento = new Evento();
+            evento.setChave(cancellation.accessKey());
+            evento.setProtocolo(cancellation.authorizationNumber());
+            evento.setMotivo(cancellation.reason());
+            evento.setCnpj(cancellation.taxId());
+            evento.setDataEvento(LocalDateTime.now());
+            // Primeiro evento de cancelamento desta nota. Uma nota so pode ser
+            // cancelada uma vez, entao a sequencia nunca avanca aqui.
+            evento.setSequencia(1);
+
+            TEnvEventoCancelamento envelope =
+                CancelamentoUtil.montaCancelamento(evento, config);
+            TRetEnvEventoCancelamento retorno = Nfe.cancelarNfe(
+                config,
+                envelope,
+                javaNfeConfigurationFactory.schemasDisponiveis(),
+                document(DocumentModel.NFCE)
+            );
+
+            return toCancellationResult(retorno);
+        } catch (NfeException ex) {
+            throw new FiscalGatewayException(
+                "Falha ao cancelar na SEFAZ: " + exceptionSummary(ex), false);
+        } finally {
+            credentials.cleanup();
+        }
+    }
+
+    /**
+     * 135 e o "evento registrado e vinculado" — o cancelamento aceito. 155 e o
+     * mesmo desfecho fora do prazo normal, quando a UF permite.
+     *
+     * Qualquer outro codigo e recusa, e a mensagem da SEFAZ vai inteira para
+     * quem pediu: e ela que diz se passou dos 30 minutos, se a nota ja estava
+     * cancelada ou se a justificativa nao serve.
+     */
+    private FiscalCancellationResult toCancellationResult(TRetEnvEventoCancelamento retorno) {
+        var retEvento = retorno.getRetEvento().isEmpty()
+            ? null
+            : retorno.getRetEvento().get(0).getInfEvento();
+        String status = retEvento == null ? retorno.getCStat() : retEvento.getCStat();
+        String motivo = retEvento == null ? retorno.getXMotivo() : retEvento.getXMotivo();
+
+        if ("135".equals(status) || "155".equals(status)) {
+            return new FiscalCancellationResult(
+                retEvento.getNProt(),
+                "SEFAZ cancelou o documento: " + status + " - " + motivo
+            );
+        }
+
+        throw new FiscalGatewayException(
+            "SEFAZ recusou o cancelamento. Status: " + status + " - " + motivo, false);
     }
 
     private void validateFiscalConfiguration(Company company) {

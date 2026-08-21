@@ -82,6 +82,16 @@ public class FiscalDocument {
     @Column(length = 1000)
     private String lastError;
 
+    /// Protocolo do evento de cancelamento e a justificativa que foi para a
+    /// SEFAZ. Ficam porque a nota cancelada continua existindo no historico —
+    /// e quem for conferir precisa saber por que ela caiu.
+    private String cancellationProtocol;
+
+    @Column(length = 255)
+    private String cancellationReason;
+
+    private OffsetDateTime cancelledAt;
+
     @Column(nullable = false)
     private int retryCount;
 
@@ -179,6 +189,26 @@ public class FiscalDocument {
         this.retryCount += 1;
         this.nextRetryAt = OffsetDateTime.now().plusMinutes(1);
         this.updatedAt = OffsetDateTime.now();
+    }
+
+    public void cancel(String protocol, String reason) {
+        this.status = DocumentStatus.CANCELLED;
+        this.cancellationProtocol = protocol;
+        this.cancellationReason = reason;
+        this.cancelledAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    public String getCancellationProtocol() {
+        return cancellationProtocol;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public OffsetDateTime getCancelledAt() {
+        return cancelledAt;
     }
 
     public void reject(String reason) {

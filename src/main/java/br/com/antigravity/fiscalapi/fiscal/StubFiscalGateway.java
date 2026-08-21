@@ -23,6 +23,26 @@ public class StubFiscalGateway implements FiscalGateway {
             .noneMatch(submission.companyStateCode()::equals);
     }
 
+    /**
+     * O stub aceita o cancelamento sem falar com a SEFAZ.
+     *
+     * Ele existe para o fluxo inteiro ser exercitado sem certificado, e o
+     * cancelamento faz parte do fluxo. O protocolo devolvido e sintetico e a
+     * mensagem diz isso: um cancelamento simulado passando por real seria pior
+     * do que nao ter.
+     *
+     * O prazo de 30 minutos nao e conferido aqui de proposito — quem o impoe e
+     * a SEFAZ, e reproduzir a regra no stub criaria uma segunda fonte da
+     * verdade que envelheceria sozinha.
+     */
+    @Override
+    public FiscalCancellationResult cancel(java.util.UUID companyId, FiscalCancellation cancellation) {
+        return new FiscalCancellationResult(
+            "135" + System.currentTimeMillis(),
+            "Cancelamento simulado, sem valor fiscal: o provedor de teste nao fala com a SEFAZ."
+        );
+    }
+
     @Override
     public FiscalSubmissionResult submit(FiscalSubmission submission) {
         if (!isAvailable(submission)) {

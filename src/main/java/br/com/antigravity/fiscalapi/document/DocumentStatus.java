@@ -5,5 +5,7 @@ public enum DocumentStatus {
     AUTHORIZED,
     CONTINGENCY_PENDING,
     REJECTED,
-    RETRY_SCHEDULED
+    RETRY_SCHEDULED,
+    /// Nota que existiu e foi cancelada na SEFAZ pelo evento 110111.
+    CANCELLED
 }

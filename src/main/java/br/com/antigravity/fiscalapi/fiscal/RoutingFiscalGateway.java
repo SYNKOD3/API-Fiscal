@@ -30,6 +30,11 @@ public class RoutingFiscalGateway implements FiscalGateway {
         return currentGateway().submit(submission);
     }
 
+    @Override
+    public FiscalCancellationResult cancel(java.util.UUID companyId, FiscalCancellation cancellation) {
+        return currentGateway().cancel(companyId, cancellation);
+    }
+
     private FiscalGateway currentGateway() {
         return properties.getFiscal().getProvider() == AppProperties.Provider.LIBRARY
             ? libraryFiscalGateway

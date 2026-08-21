@@ -73,6 +73,19 @@ public class FiscalDocumentController {
         return ApiEnvelope.of(documentService.list(companyId));
     }
 
+    @PostMapping("/{id}/cancel")
+    @Operation(
+        summary = "Cancelar documento autorizado",
+        description = "Envia o evento 110111 para a SEFAZ. O prazo é dela: 30 minutos da "
+            + "autorização para a NFC-e, por força do Ajuste SINIEF 19/2016. Passado o prazo "
+            + "a SEFAZ recusa, e o caminho passa a ser o cancelamento extemporâneo, que é "
+            + "processo manual junto ao fisco."
+    )
+    public ApiEnvelope<DocumentResponse> cancel(@PathVariable UUID id,
+                                                @Valid @RequestBody CancelDocumentRequest request) {
+        return ApiEnvelope.of(documentService.cancel(id, request));
+    }
+
     @PostMapping("/{id}/retry")
     @Operation(
         summary = "Reprocessar documento fiscal",

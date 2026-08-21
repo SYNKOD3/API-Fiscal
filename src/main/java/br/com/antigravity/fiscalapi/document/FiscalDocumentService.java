@@ -4,6 +4,7 @@ import br.com.antigravity.fiscalapi.audit.FiscalAuditService;
 import br.com.antigravity.fiscalapi.company.Company;
 import br.com.antigravity.fiscalapi.company.CompanyRepository;
 import br.com.antigravity.fiscalapi.company.FiscalEnvironment;
+import br.com.antigravity.fiscalapi.fiscal.FiscalCancellation;
 import br.com.antigravity.fiscalapi.fiscal.FiscalGateway;
 import br.com.antigravity.fiscalapi.fiscal.FiscalGatewayException;
 import br.com.antigravity.fiscalapi.fiscal.FiscalSubmission;
@@ -86,6 +87,53 @@ public class FiscalDocumentService {
         documentRepository.save(document);
         auditService.record(company.getId(), document.getId(), "DOCUMENT_RECEIVED", "Documento fiscal recebido para emissao", request.externalReference());
         process(document, request.items());
+        return DocumentResponse.from(document);
+    }
+
+    /**
+     * Cancela um documento ja autorizado, pelo evento 110111.
+     *
+     * O prazo nao e conferido aqui de proposito: quem o impoe e a SEFAZ — 30
+     * minutos da autorizacao para a NFC-e, por forca do Ajuste SINIEF 19/2016
+     * — e reproduzir a regra criaria uma segunda fonte da verdade, que
+     * envelheceria sozinha quando a norma mudasse. O que volta de la e a
+     * resposta, com a mensagem inteira.
+     *
+     * So documento autorizado se cancela. Rejeitado ou em erro nunca chegou a
+     * existir para o fisco, e nao ha o que desfazer.
+     */
+    @Transactional
+    public DocumentResponse cancel(UUID id, CancelDocumentRequest request) {
+        FiscalDocument document = loadDocument(id);
+        jwtSecurityContext.requireCompanyAccess(document.getCompany());
+
+        if (document.getStatus() == DocumentStatus.CANCELLED) {
+            throw new BadRequestException("Documento ja esta cancelado");
+        }
+        if (document.getStatus() != DocumentStatus.AUTHORIZED) {
+            throw new BadRequestException(
+                "So documento autorizado pode ser cancelado. Situacao atual: " + document.getStatus());
+        }
+
+        var resultado = fiscalGateway.cancel(
+            document.getCompany().getId(),
+            new FiscalCancellation(
+                document.getAccessKey(),
+                document.getAuthorizationNumber(),
+                document.getCompany().getTaxId(),
+                request.reason()
+            )
+        );
+
+        document.cancel(resultado.protocol(), request.reason());
+        documentRepository.saveAndFlush(document);
+        auditService.record(
+            document.getCompany().getId(),
+            document.getId(),
+            "DOCUMENT_CANCELLED",
+            resultado.message() + " | Justificativa: " + request.reason(),
+            document.getAccessKey()
+        );
         return DocumentResponse.from(document);
     }
 
