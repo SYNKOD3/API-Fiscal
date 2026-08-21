@@ -36,6 +36,20 @@ public record FiscalItemRequest(
     @NotBlank String pisCode,
     @Schema(description = "Código COFINS.", example = "49")
     @NotBlank String cofinsCode,
+    @Schema(
+        description = "CST do IBS/CBS deste item, 3 dígitos. Ausente, vale o código cadastrado "
+            + "na empresa — produtos com tratamento tributário próprio informam o seu.",
+        example = "000"
+    )
+    @Pattern(regexp = "\\d{3}", message = "O CST do IBS/CBS tem 3 dígitos.")
+    String ibsCbsCst,
+    @Schema(
+        description = "Classificação tributária do IBS/CBS deste item, 6 dígitos. Ausente, vale "
+            + "o código cadastrado na empresa.",
+        example = "000001"
+    )
+    @Pattern(regexp = "\\d{6}", message = "A classificação tributária do IBS/CBS tem 6 dígitos.")
+    String ibsCbsClassTrib,
     @Schema(description = "Valor aproximado dos tributos.", example = "0")
     @NotNull @DecimalMin("0.00") BigDecimal approximateTaxAmount
 ) {

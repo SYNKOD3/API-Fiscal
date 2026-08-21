@@ -88,7 +88,7 @@ class DescricaoHomologacaoTests {
         return new FiscalItemRequest(
             sku, descricao, "01012100", null, "SEM GTIN", "5102", "UN",
             BigDecimal.ONE, BigDecimal.valueOf(15.00), BigDecimal.valueOf(15.00),
-            "0", "102", "49", "49", BigDecimal.ZERO
+            "0", "102", "49", "49", null, null, BigDecimal.ZERO
         );
     }
 }

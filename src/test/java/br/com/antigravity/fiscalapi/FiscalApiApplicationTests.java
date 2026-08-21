@@ -298,6 +298,8 @@ class FiscalApiApplicationTests {
             "102",
             "49",
             "49",
+            null,
+            null,
             BigDecimal.ZERO
         );
     }

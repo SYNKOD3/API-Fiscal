@@ -18,6 +18,10 @@ public record FiscalXmlItemDraft(
     String icmsCode,
     String pisCode,
     String cofinsCode,
+    /// CST e classificacao do IBS/CBS ja resolvidos: o do item quando ele tem
+    /// tratamento proprio, o da empresa quando nao tem.
+    String ibsCbsCst,
+    String ibsCbsClassTrib,
     BigDecimal approximateTaxAmount
 ) {
 }

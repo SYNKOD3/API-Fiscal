@@ -99,7 +99,7 @@ class ImpostoPisCofinsTests {
             List.of(new FiscalItemRequest(
                 "PROD-001", "Produto A", "01012100", null, "SEM GTIN", "5102", "UN",
                 BigDecimal.ONE, BigDecimal.valueOf(15.00), BigDecimal.valueOf(15.00),
-                "0", "102", pisCode, cofinsCode, BigDecimal.ZERO
+                "0", "102", pisCode, cofinsCode, null, null, BigDecimal.ZERO
             ))
         ))).getNFe().get(0).getInfNFe().getDet().get(0).getImposto();
     }

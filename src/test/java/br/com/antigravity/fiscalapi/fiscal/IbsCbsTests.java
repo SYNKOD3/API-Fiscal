@@ -54,7 +54,45 @@ class IbsCbsTests {
         assertThat(ibsCbsDoPrimeiroItem("000", "  ")).isEmpty();
     }
 
+    /**
+     * O layout poe o IBS/CBS em det/imposto, ao lado do ICMS e do PIS: e por
+     * item. O codigo da empresa e so o padrao de quem nao tem tratamento
+     * proprio — dois produtos com tributacoes diferentes levam codigos
+     * diferentes na mesma nota.
+     */
+    @Test
+    void oCodigoDoItemPrevaleceSobreODaEmpresa() {
+        var ibsCbs = ibsCbsDoPrimeiroItem("000", "000001", "200", "000002");
+
+        assertThat(ibsCbs).isPresent();
+        assertThat(ibsCbs.get().getCST()).isEqualTo("200");
+        assertThat(ibsCbs.get().getCClassTrib()).isEqualTo("000002");
+    }
+
+    @Test
+    void semCodigoNoItemValeODaEmpresa() {
+        var ibsCbs = ibsCbsDoPrimeiroItem("000", "000001", null, null);
+
+        assertThat(ibsCbs).isPresent();
+        assertThat(ibsCbs.get().getCST()).isEqualTo("000");
+    }
+
+    @Test
+    void oItemSozinhoBastaQuandoAEmpresaNaoTemPadrao() {
+        var ibsCbs = ibsCbsDoPrimeiroItem(null, null, "200", "000002");
+
+        assertThat(ibsCbs).isPresent();
+        assertThat(ibsCbs.get().getCST()).isEqualTo("200");
+    }
+
     private Optional<TTribNFe> ibsCbsDoPrimeiroItem(String cst, String classTrib) {
+        return ibsCbsDoPrimeiroItem(cst, classTrib, null, null);
+    }
+
+    private Optional<TTribNFe> ibsCbsDoPrimeiroItem(
+        String cstDaEmpresa, String classTribDaEmpresa,
+        String cstDoItem, String classTribDoItem
+    ) {
         TNFe.InfNFe.Det.Imposto imposto = mapper.toEnviNFe(builder.build(new FiscalSubmission(
             UUID.randomUUID(),
             DocumentModel.NFCE,
@@ -72,8 +110,8 @@ class IbsCbsTests {
             "01000000",
             "1133334444",
             "1",
-            cst,
-            classTrib,
+            cstDaEmpresa,
+            classTribDaEmpresa,
             "2",
             OffsetDateTime.now(),
             1,
@@ -84,7 +122,7 @@ class IbsCbsTests {
             List.of(new FiscalItemRequest(
                 "PROD-001", "Produto A", "01012100", null, "SEM GTIN", "5102", "UN",
                 BigDecimal.ONE, BigDecimal.valueOf(15.00), BigDecimal.valueOf(15.00),
-                "0", "102", "49", "49", BigDecimal.ZERO
+                "0", "102", "49", "49", cstDoItem, classTribDoItem, BigDecimal.ZERO
             ))
         ))).getNFe().get(0).getInfNFe().getDet().get(0).getImposto();
 

@@ -30,6 +30,12 @@ public class FiscalXmlBuilder {
                 item.icmsCode(),
                 item.pisCode(),
                 item.cofinsCode(),
+                // O IBS/CBS e por item no layout, dentro de det/imposto, ao lado
+                // do ICMS e do PIS. O codigo da empresa e so o padrao de quem
+                // nao tem tratamento proprio — resolver aqui evita que cada
+                // lugar que le o rascunho precise lembrar dessa precedencia.
+                preferindoODoItem(item.ibsCbsCst(), submission.ibsCbsCst()),
+                preferindoODoItem(item.ibsCbsClassTrib(), submission.ibsCbsClassTrib()),
                 item.approximateTaxAmount()
             ));
         }
@@ -71,5 +77,11 @@ public class FiscalXmlBuilder {
             submission.ibsCbsCst(),
             submission.ibsCbsClassTrib()
         );
+    }
+
+    /// Vazio conta como ausente: um campo em branco no cadastro do produto e
+    /// "nao informado", nao "informado como nada".
+    private String preferindoODoItem(String doItem, String daEmpresa) {
+        return doItem == null || doItem.isBlank() ? daEmpresa : doItem;
     }
 }

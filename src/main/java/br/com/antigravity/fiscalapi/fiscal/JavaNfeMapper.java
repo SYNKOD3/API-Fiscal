@@ -179,23 +179,27 @@ public class JavaNfeMapper {
         imposto.getContent().add(element("ICMS", toIcms(item)));
         imposto.getContent().add(element("PIS", toPis(item)));
         imposto.getContent().add(element("COFINS", toCofins(item)));
-        toIbsCbs(draft).ifPresent(tributo -> imposto.getContent().add(element("IBSCBS", tributo)));
+        toIbsCbs(item).ifPresent(tributo -> imposto.getContent().add(element("IBSCBS", tributo)));
         return imposto;
     }
 
     /**
-     * IBS e CBS, da reforma tributaria — vazio enquanto o contador nao decidir.
+     * IBS e CBS, da reforma tributaria — por item, como manda o layout.
      *
-     * O CST e a classificacao tributaria definem o tratamento da venda, e o
-     * schema aceita qualquer numero no formato: nao ha valor padrao que sirva
-     * para toda empresa, e chutar um geraria documento que a SEFAZ autoriza e
-     * que entra errado na escrituracao. Por isso vem do cadastro, e por isso a
-     * ausencia deles omite o grupo em vez de inventar conteudo — a SEFAZ
-     * recusa com 1115, que e o desfecho visivel e corrigivel.
+     * O grupo mora em det/imposto, ao lado do ICMS e do PIS: dois produtos com
+     * tratamentos diferentes levam codigos diferentes na mesma nota. O codigo
+     * da empresa e apenas o padrao de quem nao tem tratamento proprio, e a
+     * escolha entre um e outro ja foi feita ao montar o rascunho.
+     *
+     * O CST e a classificacao definem o tratamento tributario, e o schema
+     * aceita qualquer numero no formato: chutar um valor geraria documento que
+     * a SEFAZ autoriza e que entra errado na escrituracao. Por isso a ausencia
+     * omite o grupo em vez de inventar conteudo — a SEFAZ recusa com 1115, que
+     * e o desfecho visivel e corrigivel.
      */
-    private Optional<TTribNFe> toIbsCbs(FiscalXmlDraft draft) {
-        String cst = draft.issuer().ibsCbsCst();
-        String classTrib = draft.issuer().ibsCbsClassTrib();
+    private Optional<TTribNFe> toIbsCbs(FiscalXmlItemDraft item) {
+        String cst = item.ibsCbsCst();
+        String classTrib = item.ibsCbsClassTrib();
         if (cst == null || cst.isBlank() || classTrib == null || classTrib.isBlank()) {
             return Optional.empty();
         }
