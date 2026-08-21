@@ -63,13 +63,47 @@ class NfceQrCodeFactoryTests {
      * NF-e nao tem QR Code. Preencher o grupo nela seria inventar um dado que
      * o modelo 55 nao preve.
      */
+    /**
+     * O codigo aplicado no XML e o devolvido precisam ser o mesmo texto.
+     *
+     * Quem imprime o cupom e a plataforma integradora, do outro lado, e ela
+     * nao tem como recalcular: o codigo depende da URL da UF e do ambiente.
+     * Devolver coisa diferente do que foi para a SEFAZ daria um cupom com QR
+     * Code que nao corresponde a nota.
+     */
+    @Test
+    void oCodigoDevolvidoEOMesmoQueFoiParaANota() {
+        var draft = draftDe(DocumentModel.NFCE, "2");
+        var enviNFe = mapper.toEnviNFe(draft);
+
+        var devolvido = factory.aplicar(enviNFe, draft, new ConfiguracoesNfe());
+
+        assertThat(devolvido).contains(enviNFe.getNFe().get(0).getInfNFeSupl().getQrCode());
+    }
+
+    @Test
+    void nfeNaoDevolveCodigoAlgum() {
+        var draft = draftDe(DocumentModel.NFE, "2");
+
+        assertThat(factory.aplicar(mapper.toEnviNFe(draft), draft, new ConfiguracoesNfe()))
+            .as("modelo 55 nao tem QR Code, e nulo aqui e a verdade")
+            .isEmpty();
+    }
+
     @Test
     void nfeNaoRecebeOGrupo() {
         assertThat(comQrCode(DocumentModel.NFE, "2").getNFe().get(0).getInfNFeSupl()).isNull();
     }
 
     private TEnviNFe comQrCode(DocumentModel modelo, String ambiente) {
-        FiscalXmlDraft draft = builder.build(new FiscalSubmission(
+        FiscalXmlDraft draft = draftDe(modelo, ambiente);
+        TEnviNFe enviNFe = mapper.toEnviNFe(draft);
+        factory.aplicar(enviNFe, draft, new ConfiguracoesNfe());
+        return enviNFe;
+    }
+
+    private FiscalXmlDraft draftDe(DocumentModel modelo, String ambiente) {
+        return builder.build(new FiscalSubmission(
             UUID.randomUUID(),
             modelo,
             "Empresa Fiscal Teste LTDA",
@@ -101,9 +135,5 @@ class NfceQrCodeFactoryTests {
                 "0", "102", "49", "49", null, null, BigDecimal.ZERO
             ))
         ));
-
-        TEnviNFe enviNFe = mapper.toEnviNFe(draft);
-        factory.aplicar(enviNFe, draft, new ConfiguracoesNfe());
-        return enviNFe;
     }
 }

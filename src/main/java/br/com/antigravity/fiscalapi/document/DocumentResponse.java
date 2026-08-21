@@ -16,6 +16,8 @@ public record DocumentResponse(
     String customerName,
     String authorizationNumber,
     String accessKey,
+    /// Conteudo do QR Code da NFC-e; nulo em NF-e, que nao tem.
+    String qrCode,
     String receiptContent,
     String lastError,
     int retryCount,
@@ -35,6 +37,7 @@ public record DocumentResponse(
             document.getCustomerName(),
             document.getAuthorizationNumber(),
             document.getAccessKey(),
+            document.getQrCode(),
             document.getReceiptContent(),
             document.getLastError(),
             document.getRetryCount(),

@@ -252,6 +252,7 @@ public class FiscalDocumentService {
         try {
             var result = fiscalGateway.submit(submission);
             document.authorize(result.authorizationNumber(), result.accessKey(), result.receiptContent());
+            document.registerQrCode(result.qrCode());
             auditService.record(document.getCompany().getId(), document.getId(), "DOCUMENT_AUTHORIZED", "Documento fiscal autorizado", result.authorizationNumber());
         } catch (FiscalGatewayException ex) {
             if (ex.isTemporary()) {

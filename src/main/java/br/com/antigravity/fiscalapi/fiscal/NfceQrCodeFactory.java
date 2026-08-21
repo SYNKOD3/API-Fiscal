@@ -7,6 +7,7 @@ import br.com.swconsultoria.nfe.schemas.TEnviNFe;
 import br.com.swconsultoria.nfe.schemas.TNFe;
 import br.com.swconsultoria.nfe.util.NFCeUtil;
 import br.com.swconsultoria.nfe.util.WebServiceUtil;
+import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,9 +30,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class NfceQrCodeFactory {
 
-    public void aplicar(TEnviNFe enviNFe, FiscalXmlDraft draft, ConfiguracoesNfe config) {
+    /// Devolve o conteudo do QR Code aplicado, ou vazio quando nao ha — NF-e
+    /// nao tem. Quem chama precisa dele para guardar: o cupom e impresso do
+    /// outro lado, por quem nao consegue recalcular este codigo.
+    public Optional<String> aplicar(TEnviNFe enviNFe, FiscalXmlDraft draft, ConfiguracoesNfe config) {
         if (draft.model() != DocumentModel.NFCE) {
-            return;
+            return Optional.empty();
         }
 
         String urlQrCode = url(config, draft, "URL-QRCode");
@@ -45,6 +49,7 @@ public class NfceQrCodeFactory {
         ));
         suplemento.setUrlChave(urlConsulta);
         enviNFe.getNFe().get(0).setInfNFeSupl(suplemento);
+        return Optional.of(suplemento.getQrCode());
     }
 
     /**

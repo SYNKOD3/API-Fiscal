@@ -67,6 +67,18 @@ public class FiscalDocument {
     private String authorizationNumber;
     private String accessKey;
 
+    /**
+     * Conteudo do QR Code da NFC-e, como foi para a SEFAZ.
+     *
+     * Guardado porque quem imprime o cupom e a plataforma integradora, e ela
+     * nao tem como recalcular: o codigo depende da URL da UF e do ambiente,
+     * que sao conhecimento desta API. Sem devolve-lo, a nota sai autorizada
+     * com QR Code no XML e o cupom do cliente sai sem — que e justamente o
+     * que o consumidor usa para conferir a nota.
+     */
+    @Column(length = 600)
+    private String qrCode;
+
     @Column(length = 1000)
     private String lastError;
 
@@ -225,6 +237,15 @@ public class FiscalDocument {
 
     public String getAuthorizationNumber() {
         return authorizationNumber;
+    }
+
+    public void registerQrCode(String qrCode) {
+        this.qrCode = qrCode;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    public String getQrCode() {
+        return qrCode;
     }
 
     public String getAccessKey() {

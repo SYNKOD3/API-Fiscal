@@ -82,10 +82,10 @@ public class LibraryFiscalGateway implements FiscalGateway {
             // QR Code v3 nao carrega valor — mas a ordem inversa deixaria um
             // total no XML e outro no codigo se isso mudar.
             ibsCbsFactory.aplicar(enviNFe, draft, config);
-            nfceQrCodeFactory.aplicar(enviNFe, draft, config);
+            String qrCode = nfceQrCodeFactory.aplicar(enviNFe, draft, config).orElse(null);
             TEnviNFe signedEnvelope = sign(config, enviNFe, draft);
             TRetEnviNFe response = send(config, signedEnvelope, submission.model());
-            return toSubmissionResult(response);
+            return toSubmissionResult(response, qrCode);
         } finally {
             credentials.cleanup();
         }
@@ -126,7 +126,7 @@ public class LibraryFiscalGateway implements FiscalGateway {
         }
     }
 
-    private FiscalSubmissionResult toSubmissionResult(TRetEnviNFe response) {
+    private FiscalSubmissionResult toSubmissionResult(TRetEnviNFe response, String qrCode) {
         TProtNFe.InfProt protocol = response.getProtNFe() == null ? null : response.getProtNFe().getInfProt();
         String status = protocol == null ? response.getCStat() : protocol.getCStat();
         String reason = protocol == null ? response.getXMotivo() : protocol.getXMotivo();
@@ -135,7 +135,8 @@ public class LibraryFiscalGateway implements FiscalGateway {
             return new FiscalSubmissionResult(
                 protocol.getNProt(),
                 protocol.getChNFe(),
-                "SEFAZ autorizou documento fiscal: " + status + " - " + reason
+                "SEFAZ autorizou documento fiscal: " + status + " - " + reason,
+                qrCode
             );
         }
 

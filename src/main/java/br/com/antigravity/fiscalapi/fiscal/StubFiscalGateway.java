@@ -54,6 +54,8 @@ public class StubFiscalGateway implements FiscalGateway {
             OffsetDateTime.now()
         );
 
-        return new FiscalSubmissionResult(auth, key, receipt);
+        // O stub nao fala com a SEFAZ e nao monta QR Code: nulo aqui e a
+        // verdade, e a tela mostra que o documento esta sem.
+        return new FiscalSubmissionResult(auth, key, receipt, null);
     }
 }
